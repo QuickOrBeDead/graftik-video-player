@@ -141,3 +141,13 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+.DS_Store
+.tmp
+
+# SQLite databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
