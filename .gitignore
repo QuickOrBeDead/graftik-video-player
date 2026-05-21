@@ -151,3 +151,9 @@ vite.config.ts.timestamp-*
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+build/bin
+build/*/bin/ffmpeg*
+build/*/bin/ffprobe*
+frontend/dist
+

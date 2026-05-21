@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "wails-build-debug",
+      "type": "shell",
+      "command": "wails",
+      "args": [
+        "build",
+        "-debug",
+        "-o",
+        "GraftikVideoPlayer.exe"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "detail": "Build Wails app with debug symbols"
+    }
+  ]
+}

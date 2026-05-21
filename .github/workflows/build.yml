@@ -15,11 +15,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            script: build:win
+            platform: windows/amd64
           - os: macos-latest
-            script: build:mac
+            platform: darwin/universal
           - os: ubuntu-latest
-            script: build:linux
+            platform: linux/amd64
 
     runs-on: ${{ matrix.os }}
 
@@ -27,28 +27,79 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: choco install mingw -y
+
+      - name: Install frontend dependencies
         run: npm ci
+        working-directory: frontend
+
+      - name: Download FFmpeg (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: .\build\windows\download-ffmpeg.ps1
+
+      - name: Download FFmpeg (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: bash build/linux/download-ffmpeg.sh
+
+      - name: Download FFmpeg (macOS)
+        if: matrix.os == 'macos-latest'
+        run: bash build/darwin/download-ffmpeg.sh
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
       - name: Build
-        run: npm run ${{ matrix.script }}
+        run: wails build -platform ${{ matrix.platform }} -clean
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CGO_ENABLED: 1
+
+      - name: Bundle FFmpeg with executable (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "build/bin/bin" -Force
+          Copy-Item "build/windows/bin/ffmpeg.exe" "build/bin/bin/"
+          Copy-Item "build/windows/bin/ffprobe.exe" "build/bin/bin/"
+
+      - name: Bundle FFmpeg with executable (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p "build/bin/bin"
+          cp build/linux/bin/ffmpeg build/bin/bin/
+          cp build/linux/bin/ffprobe build/bin/bin/
+          chmod +x build/bin/bin/*
+
+      - name: Bundle FFmpeg with .app bundle (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p "build/bin/GraftikVideoPlayer.app/Contents/MacOS/bin"
+          cp build/darwin/bin/ffmpeg "build/bin/GraftikVideoPlayer.app/Contents/MacOS/bin/"
+          cp build/darwin/bin/ffprobe "build/bin/GraftikVideoPlayer.app/Contents/MacOS/bin/"
+          chmod +x "build/bin/GraftikVideoPlayer.app/Contents/MacOS/bin/"*
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-artifacts
-          path: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.AppImage
-            dist/*.snap
-            dist/*.deb
-          if-no-files-found: ignore
+          name: GraftikVideoPlayer-${{ matrix.os }}
+          path: build/bin/**
+          if-no-files-found: warn
