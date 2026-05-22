@@ -1,10 +1,11 @@
 module graftik-wails
 
-go 1.25.0
+go 1.26.2
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/wailsapp/wails/v2 v2.12.0
+	github.com/yuin/gopher-lua v1.1.2
 	modernc.org/sqlite v1.50.1
 )
 

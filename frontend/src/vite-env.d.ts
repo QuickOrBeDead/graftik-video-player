@@ -1,11 +1,27 @@
 /// <reference types="vite/client" />
 
+interface PluginInstallResult {
+  id: string
+  name: string
+  version: string
+  status: string
+  menu: any[]
+  ui?: string
+}
+
 declare global {
   interface Window {
     go: {
       main: {
         App: {
           GetVideoServerPort: () => Promise<number>
+          GetPlugins: () => Promise<any>
+          ExecutePluginAction: (pluginId: string, action: string, argsJson: string) => Promise<any>
+          PickDirectory: () => Promise<string>
+          PickPluginFile: () => Promise<string>
+          GetPluginFile: (pluginId: string, fileName: string) => Promise<string>
+          InstallPluginFromFile: (filePath: string) => Promise<PluginInstallResult>
+          InstallPluginFromURL: (url: string) => Promise<PluginInstallResult>
         }
       }
       internal: {

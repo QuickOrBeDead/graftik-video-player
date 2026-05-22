@@ -6,6 +6,34 @@ export function CreateAppMenu() {
   return window['go']['main']['App']['CreateAppMenu']();
 }
 
+export function ExecutePluginAction(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ExecutePluginAction'](arg1, arg2, arg3);
+}
+
+export function GetPluginFile(arg1, arg2) {
+  return window['go']['main']['App']['GetPluginFile'](arg1, arg2);
+}
+
+export function GetPlugins() {
+  return window['go']['main']['App']['GetPlugins']();
+}
+
 export function GetVideoServerPort() {
   return window['go']['main']['App']['GetVideoServerPort']();
+}
+
+export function InstallPluginFromFile(arg1) {
+  return window['go']['main']['App']['InstallPluginFromFile'](arg1);
+}
+
+export function InstallPluginFromURL(arg1) {
+  return window['go']['main']['App']['InstallPluginFromURL'](arg1);
+}
+
+export function PickDirectory() {
+  return window['go']['main']['App']['PickDirectory']();
+}
+
+export function PickPluginFile() {
+  return window['go']['main']['App']['PickPluginFile']();
 }

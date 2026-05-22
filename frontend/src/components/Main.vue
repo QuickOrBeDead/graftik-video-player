@@ -4,10 +4,15 @@ import { Playlist, VideoPlayer } from './video-player'
 import { PlaylistDto as DbPlaylist } from '@renderer/data/playlist'
 import PlaylistsModal from './Playlists.vue'
 import NewPlaylistModal from './NewPlaylist.vue'
+import PluginPanel from './PluginPanel.vue'
+import PluginUIHost from './PluginUIHost.vue'
+import type { PluginInfo } from '@renderer/data/plugin'
 
 const playlist = ref<Playlist | null>(null)
 const showPlaylistsModal = ref(false)
 const showNewPlaylistModal = ref(false)
+const showPluginPanel = ref(false)
+const activePluginUI = ref<PluginInfo | null>(null)
 
 onMounted(async () => {
   await loadPlaylist()
@@ -32,6 +37,10 @@ onMounted(async () => {
 
   window.runtime.EventsOn('open-new-playlist', () => {
     showNewPlaylistModal.value = true
+  })
+
+  window.runtime.EventsOn('open-plugin-panel', () => {
+    showPluginPanel.value = true
   })
 })
 
@@ -66,10 +75,18 @@ const setPlaylist = (dbPlaylist: DbPlaylist) => {
     shuffledDeck: []
   }
 }
+
+function onOpenPlugin(plugin: PluginInfo, action: string) {
+  if (plugin.ui) {
+    activePluginUI.value = plugin
+  }
+}
 </script>
 
 <template>
   <video-player :playlist="playlist"></video-player>
   <PlaylistsModal v-if="showPlaylistsModal" @close="showPlaylistsModal = false" />
   <NewPlaylistModal v-if="showNewPlaylistModal" @close="showNewPlaylistModal = false" />
+  <PluginPanel v-if="showPluginPanel" @close="showPluginPanel = false" @openPlugin="onOpenPlugin" />
+  <PluginUIHost v-if="activePluginUI" :plugin="activePluginUI" @close="activePluginUI = null" />
 </template>

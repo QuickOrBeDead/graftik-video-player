@@ -3,12 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"graftik-wails/internal"
 	"graftik-wails/internal/data"
+	"graftik-wails/internal/plugin"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
@@ -16,17 +20,29 @@ import (
 )
 
 type App struct {
-	ctx             context.Context
-	Service         *internal.PlayerService
-	store           *data.PlayerDataStore
-	thumbnailStore  *data.ThumbnailDataStore
-	ffmpegDir       string
+	ctx            context.Context
+	Service        *internal.PlayerService
+	store          *data.PlayerDataStore
+	thumbnailStore *data.ThumbnailDataStore
+	ffmpegDir      string
 	videoServerPort int
+	pluginManager  *plugin.Manager
+	pluginsDir     string
 }
 
 func NewApp() *App {
+	userDataDir, err := os.UserConfigDir()
+	appDataDir := ""
+	if err == nil {
+		appDataDir = filepath.Join(userDataDir, "graftik-video-player")
+	}
+
+	pluginsDir := filepath.Join(appDataDir, "plugins")
+
 	return &App{
-		Service: internal.NewPlayerService(nil, nil),
+		Service:       internal.NewPlayerService(nil, nil),
+		pluginManager: plugin.NewManager(pluginsDir),
+		pluginsDir:    pluginsDir,
 	}
 }
 
@@ -79,9 +95,56 @@ func (a *App) startup(ctx context.Context) {
 	a.Service.SetThumbnailStore(a.thumbnailStore)
 	a.Service.SetContext(ctx)
 	a.Service.SetFFmpegPaths(ffmpegPath, ffprobePath)
+
+	// Wire up Lua plugin host callbacks
+	plugin.SetAddToPlaylistFn(func(path, title string) {
+		if a.store == nil || a.ctx == nil {
+			return
+		}
+		items := a.store.InitNewPlaylistItems([]string{path})
+		if title != "" && len(items) > 0 {
+			items[0].Title = title
+		}
+		if playlistID := a.store.GetCurrentPlaylistID(); playlistID != "" && len(items) > 0 {
+			items[0].PlaylistID = playlistID
+		}
+		wailsRuntime.EventsEmit(a.ctx, "add-playlist-item", items)
+	})
+
+	plugin.SetEventSink(func(event string, data string) {
+		if a.ctx == nil {
+			return
+		}
+		wailsRuntime.EventsEmit(a.ctx, event, data)
+	})
+
+	// Listen for plugin action requests from frontend (no-arg actions)
+	wailsRuntime.EventsOn(a.ctx, "run-plugin-action", func(optionalData ...any) {
+		if len(optionalData) < 1 {
+			return
+		}
+		payload, ok := optionalData[0].(map[string]any)
+		if !ok {
+			return
+		}
+		pluginID, _ := payload["pluginId"].(string)
+		action, _ := payload["action"].(string)
+		if pluginID == "" || action == "" {
+			return
+		}
+		if err := a.pluginManager.ExecuteAction(pluginID, action, ""); err != nil {
+			println("plugin action error:", err.Error())
+		}
+	})
+
+	// Discover Lua plugins
+	if err := a.pluginManager.Discover(ctx); err != nil {
+		println("Plugin discovery error:", err.Error())
+	}
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	a.pluginManager.Shutdown()
 	if a.store != nil {
 		a.store.Close()
 	}
@@ -91,19 +154,143 @@ func (a *App) GetVideoServerPort() int {
 	return a.videoServerPort
 }
 
+func (a *App) GetPlugins() []plugin.PluginInfo {
+	return a.pluginManager.Plugins()
+}
+
+func (a *App) ExecutePluginAction(pluginID, action, argsJSON string) error {
+	return a.pluginManager.ExecuteAction(pluginID, action, argsJSON)
+}
+
+func (a *App) PickPluginFile() (string, error) {
+	if a.ctx == nil {
+		return "", nil
+	}
+	file, err := wailsRuntime.OpenFileDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select Plugin ZIP",
+		Filters: []wailsRuntime.FileFilter{
+			{
+				DisplayName: "Plugin ZIP",
+				Pattern:     "*.zip",
+			},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return file, nil
+}
+
+func (a *App) PickDirectory() (string, error) {
+	if a.ctx == nil {
+		return "", nil
+	}
+	dir, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select Directory",
+	})
+	if err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+func (a *App) GetPluginFile(pluginID, fileName string) (string, error) {
+	if strings.Contains(pluginID, "..") || strings.Contains(pluginID, "/") || strings.Contains(pluginID, "\\") {
+		return "", fmt.Errorf("invalid plugin id")
+	}
+	if strings.Contains(fileName, "..") || strings.Contains(fileName, "/") || strings.Contains(fileName, "\\") {
+		return "", fmt.Errorf("invalid file name")
+	}
+	fullPath := filepath.Join(a.pluginsDir, pluginID, fileName)
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("read plugin file: %w", err)
+	}
+	return string(data), nil
+}
+
+func (a *App) InstallPluginFromFile(filePath string) (*plugin.PluginInfo, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("read file: %w", err)
+	}
+	return a.pluginManager.InstallPlugin(data)
+}
+
+type progressReader struct {
+	reader     io.Reader
+	total      int64
+	read       int64
+	onProgress func(pct int)
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.reader.Read(p)
+	pr.read += int64(n)
+	if pr.total > 0 && pr.onProgress != nil {
+		pct := int(pr.read * 100 / pr.total)
+		pr.onProgress(pct)
+	}
+	return n, err
+}
+
+func (a *App) InstallPluginFromURL(url string) (*plugin.PluginInfo, error) {
+	if a.ctx != nil {
+		wailsRuntime.EventsEmit(a.ctx, "plugin-install-log", `{"message":"Downloading plugin..."}`)
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("download returned status %d", resp.StatusCode)
+	}
+
+	pr := &progressReader{
+		reader: resp.Body,
+		total:  resp.ContentLength,
+		onProgress: func(pct int) {
+			if a.ctx != nil {
+				wailsRuntime.EventsEmit(a.ctx, "plugin-install-progress", fmt.Sprintf(`{"percent":%d}`, pct))
+			}
+		},
+	}
+
+	if a.ctx != nil {
+		wailsRuntime.EventsEmit(a.ctx, "plugin-install-log", `{"message":"Installing plugin..."}`)
+	}
+
+	data, err := io.ReadAll(pr)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+
+	info, err := a.pluginManager.InstallPlugin(data)
+	if err != nil {
+		return nil, err
+	}
+
+	if a.ctx != nil {
+		wailsRuntime.EventsEmit(a.ctx, "plugin-install-complete", fmt.Sprintf(`{"id":"%s","name":"%s","version":"%s"}`, info.ID, info.Name, info.Version))
+	}
+
+	fmt.Printf("plugin: installed from url %s -> %s v%s\n", url, info.Name, info.Version)
+	return info, nil
+}
+
 func (a *App) findFFmpegDir() string {
 	exeDir, err := os.Executable()
 	if err == nil {
 		appDir := filepath.Dir(exeDir)
 
-		// Check bundled bin/ directory next to executable
-		// Works for: Windows NSIS ($INSTDIR\bin\), macOS .app (Contents/MacOS/bin/), Linux (next to binary)
 		binDir := filepath.Join(appDir, "bin")
 		if platformBin("ffmpeg", binDir) != "" {
 			return binDir
 		}
 
-		// macOS: also check Contents/Resources/bin/ relative to MacOS/
 		resBin := filepath.Join(appDir, "..", "Resources", "bin")
 		if resolved, _ := filepath.Abs(resBin); resolved != "" {
 			if platformBin("ffmpeg", resolved) != "" {
@@ -112,7 +299,6 @@ func (a *App) findFFmpegDir() string {
 		}
 	}
 
-	// Check PATH
 	if path, err := exec.LookPath("ffmpeg"); err == nil {
 		return filepath.Dir(path)
 	}
@@ -120,7 +306,6 @@ func (a *App) findFFmpegDir() string {
 	return "."
 }
 
-// platformBin returns the path to the binary if it exists, handling per-platform extensions
 func platformBin(name, dir string) string {
 	candidates := []string{name, name + ".exe"}
 	for _, c := range candidates {
@@ -154,6 +339,14 @@ func (a *App) CreateAppMenu() *menu.Menu {
 	fileMenu.AddText("Choose Playlist", nil, func(_ *menu.CallbackData) {
 		if a.ctx != nil {
 			wailsRuntime.EventsEmit(a.ctx, "open-choose-playlist")
+		}
+	})
+
+	fileMenu.AddSeparator()
+
+	fileMenu.AddText("Plugins...", keys.CmdOrCtrl("p"), func(_ *menu.CallbackData) {
+		if a.ctx != nil {
+			wailsRuntime.EventsEmit(a.ctx, "open-plugin-panel")
 		}
 	})
 
