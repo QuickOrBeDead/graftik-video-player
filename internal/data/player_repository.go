@@ -147,6 +147,34 @@ func (r *PlayerRepository) GetPlaylistProjection(id string, columns []string) (m
 	return result, nil
 }
 
+func (r *PlayerRepository) GetPlaylistItemByID(id string) *PlaylistItemDto {
+	row := r.db.QueryRow(`SELECT id, playlist_id, path, title, is_playing, elapsed_time, duration, progress_percent, last_watched, order_index FROM playlist_items WHERE id = ?`, id)
+	var item PlaylistItemDto
+	var isPlaying int
+	var elapsedTime, duration, progressPercent sql.NullFloat64
+	var lastWatched sql.NullInt64
+	err := row.Scan(&item.ID, &item.PlaylistID, &item.Path, &item.Title,
+		&isPlaying, &elapsedTime, &duration, &progressPercent, &lastWatched, &item.OrderIndex)
+	if err != nil {
+		return nil
+	}
+	isPlayingBool := isPlaying != 0
+	item.IsPlaying = &isPlayingBool
+	if elapsedTime.Valid {
+		item.ElapsedTime = &elapsedTime.Float64
+	}
+	if duration.Valid {
+		item.Duration = &duration.Float64
+	}
+	if progressPercent.Valid {
+		item.ProgressPercent = &progressPercent.Float64
+	}
+	if lastWatched.Valid {
+		item.LastWatched = &lastWatched.Int64
+	}
+	return &item
+}
+
 func (r *PlayerRepository) GetPlaylists() ([]PlaylistListItem, error) {
 	rows, err := r.db.Query("SELECT id, name FROM playlists ORDER BY name ASC")
 	if err != nil {

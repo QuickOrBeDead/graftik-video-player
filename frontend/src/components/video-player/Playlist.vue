@@ -5,13 +5,13 @@ import { Modal } from 'bootstrap'
 import { nextTick, ref, watch } from 'vue'
 import { formatTime } from './utils'
 import ContextMenu from '@imengyu/vue3-context-menu'
-import { Playlist, PlaylistItem, PlaylistSortInfo, PlaylistViewMode, VideoMetadata } from './types'
+import { Playlist, PlaylistItem, PlaylistSortInfo, PlaylistViewMode, VideoMetadata, StreamInfo } from './types'
 import pLimit from 'p-limit'
 import { usePlaylist } from './composables/usePlaylist'
 import { PlaylistItemDto } from '@renderer/data/playlist'
 
 const props = defineProps<{ playlist: Playlist | null }>()
-const { playerState, playVideo, progressPercent, pause } = usePlayer()
+const { playerState, shouldAutoplay, playVideo, progressPercent, pause } = usePlayer()
 const {
   playlistState,
   filteredPlaylist,
@@ -42,12 +42,10 @@ watch(
       setPlaylist(newData)
 
       const currentPlaylistItem = getCurrentPlaylistItem()
-      if (currentPlaylistItem) {
-        if (currentPlaylistItem.isPlaying) {
-          nextTick(() => {
-            playItem(currentPlaylistItem)
-          })
-        }
+      if (currentPlaylistItem && shouldAutoplay.value) {
+        nextTick(async () => {
+          await playItem(currentPlaylistItem)
+        })
       }
 
       playlistState.items.map(i => loadVideoMetadata(i))
@@ -81,15 +79,29 @@ const loadVideoMetadata = (i: PlaylistItem) => {
       i.thumbnailImage = data.thumbnail
       i.duration = data.duration
     })
+
+  loadVideoMetadataPLimit(() => getStreamInfo(i.path))
+    .then(info => {
+      i.streamInfo = info
+    })
 }
 
 const getVideoMetadata = async (playlistId: string, playlistItemId: string, videoPath: string): Promise<VideoMetadata> => {
   return await window.go.internal.PlayerService.GetPlaylistItemVideoMetadata(playlistId, playlistItemId, videoPath) as VideoMetadata
 }
 
-const playItem = (item: PlaylistItem) => {
+const getStreamInfo = async (videoPath: string): Promise<StreamInfo | undefined> => {
+  try {
+    return await window.go.internal.PlayerService.GetStreamInfo(videoPath) as StreamInfo
+  } catch (e) {
+    console.error('GetStreamInfo error:', e)
+    return undefined
+  }
+}
+
+const playItem = async (item: PlaylistItem) => {
   const restartTime = item.progressPercent !== undefined && item.progressPercent >= 100 ? 0 : (item.elapsedTime ?? 0)
-  playVideo(item.path, restartTime)
+  await playVideo(item.path, restartTime, item.id)
   setPlaylistCurrentItem(item.id)
 }
 
@@ -134,11 +146,11 @@ const showContextMenu = (e: MouseEvent, item: PlaylistItem) => {
         label: item.isPlaying && playerState.isPlaying ? 'Pause' : 'Play',
         icon: item.isPlaying && playerState.isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill',
         iconFontClass: item.isPlaying && playerState.isPlaying ? 'text-warning' : 'text-success',
-        onClick: () => {
+        onClick: async () => {
           if (item.isPlaying && playerState.isPlaying) {
             pause()
           } else {
-            playItem(item)
+            await playItem(item)
           }
         }
       },
@@ -233,7 +245,7 @@ const updatePlaylistItemOrder = async (event: { moved: { element: PlaylistItem; 
           <div
             :class="{ active: element.id === playlistState.currentItem }"
             class="playlist-item"
-            @click="() => playItem(element)"
+            @click="async () => await playItem(element)"
             @contextmenu="(e) => showContextMenu(e, element)"
           >
             <div class="playlist-item-thumb">
@@ -242,8 +254,8 @@ const updatePlaylistItemOrder = async (event: { moved: { element: PlaylistItem; 
               <span class="duration-badge">{{ formatTime(element.duration) }}</span>
             </div>
             <div class="playlist-item-content">
-              <div class="playlist-item-title text-truncate">{{ element.title }}</div>
-              <div class="playlist-item-footer">
+            <div class="playlist-item-title text-truncate">{{ element.title }}</div>
+               <div class="playlist-item-footer">
                 <div class="playlist-progress-container" v-if="true">
                   <div class="playlist-progress-bar" :style="{ width: (element.progressPercent ?? 0) + '%' }"></div>
                 </div>
@@ -511,4 +523,6 @@ const updatePlaylistItemOrder = async (event: { moved: { element: PlaylistItem; 
     color: #888;
     font-family: monospace;
   }
+
+
 </style>

@@ -30,8 +30,24 @@ type PlaylistListItem struct {
 }
 
 type VideoMetadata struct {
-	Duration      float64 `json:"duration"`
-	LastModified  float64 `json:"lastModified"`
-	FileSize      float64 `json:"fileSize"`
-	Thumbnail     string  `json:"thumbnail"`
+	Duration     float64 `json:"duration"`
+	LastModified float64 `json:"lastModified"`
+	FileSize     float64 `json:"fileSize"`
+	Thumbnail    string  `json:"thumbnail"`
+}
+
+type StreamInfo struct {
+	Container   string `json:"container"`
+	VideoCodec  string `json:"videoCodec"`
+	AudioCodec  string `json:"audioCodec"`
+	Width       int    `json:"width"`
+	Height      int    `json:"height"`
+	Action      string `json:"action"`
+	ActionLabel string `json:"actionLabel"`
+	HWEncoder   string `json:"hwEncoder,omitempty"`
+}
+
+type StreamURLResult struct {
+	URL      string `json:"url"`
+	StreamID string `json:"streamId,omitempty"`
 }

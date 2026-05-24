@@ -18,6 +18,14 @@ export function DeletePlaylistItem(arg1) {
   return window['go']['internal']['PlayerService']['DeletePlaylistItem'](arg1);
 }
 
+export function FFmpegPath() {
+  return window['go']['internal']['PlayerService']['FFmpegPath']();
+}
+
+export function FFprobePath() {
+  return window['go']['internal']['PlayerService']['FFprobePath']();
+}
+
 export function GetCurrentPlaylist() {
   return window['go']['internal']['PlayerService']['GetCurrentPlaylist']();
 }
@@ -38,6 +46,14 @@ export function GetPlaylists() {
   return window['go']['internal']['PlayerService']['GetPlaylists']();
 }
 
+export function GetPreferences() {
+  return window['go']['internal']['PlayerService']['GetPreferences']();
+}
+
+export function GetStreamInfo(arg1) {
+  return window['go']['internal']['PlayerService']['GetStreamInfo'](arg1);
+}
+
 export function InitNewPlaylistItems(arg1) {
   return window['go']['internal']['PlayerService']['InitNewPlaylistItems'](arg1);
 }
@@ -50,6 +66,10 @@ export function RebalancePlaylistOrder(arg1) {
   return window['go']['internal']['PlayerService']['RebalancePlaylistOrder'](arg1);
 }
 
+export function SavePreferences(arg1) {
+  return window['go']['internal']['PlayerService']['SavePreferences'](arg1);
+}
+
 export function SelectPlaylist(arg1) {
   return window['go']['internal']['PlayerService']['SelectPlaylist'](arg1);
 }
@@ -60,6 +80,10 @@ export function SetContext(arg1) {
 
 export function SetFFmpegPaths(arg1, arg2) {
   return window['go']['internal']['PlayerService']['SetFFmpegPaths'](arg1, arg2);
+}
+
+export function SetHlsEngine(arg1) {
+  return window['go']['internal']['PlayerService']['SetHlsEngine'](arg1);
 }
 
 export function SetStore(arg1) {

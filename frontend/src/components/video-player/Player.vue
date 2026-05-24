@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { usePlayer, setVideoPort } from './composables/usePlayer'
 import { usePlaylist } from './composables/usePlaylist'
 import { RepeatMode } from './types'
+import Hls from 'hls.js'
 
 const {
     playerState,
@@ -26,20 +27,62 @@ const {
     seek,
     handleProgressBarHover,
     progressBarHoverTime,
-    hideProgressBarHoverPreview
+    hideProgressBarHoverPreview,
+    stopHlsStream
 } = usePlayer()
-const { getNextPlaylistItem, getPreviousPlaylistItem, setPlaylistCurrentItem, clearShuffledDeck } = usePlaylist()
+const { getCurrentPlaylistItem, getNextPlaylistItem, getPreviousPlaylistItem, setPlaylistCurrentItem, clearShuffledDeck } = usePlaylist()
 
 const progressBarHoverPreviewX = ref<number>(0)
 const previewVideo = ref<HTMLVideoElement | null>(null)
 const previewCanvas = ref<HTMLCanvasElement | null>(null)
 const videoPlayerElement = ref<HTMLVideoElement | null>(null)
 
+let hlsInstance: Hls | null = null
+let isChangingSource = false
+
+const nativeExts = ['.webm', '.ogg', '.ogv', '.mp4', '.mov', '.m4v', '.3gp', '.3g2']
+
+const footerInfo = computed(() => {
+  const item = getCurrentPlaylistItem()
+  if (!item) return null
+
+  const info = item.streamInfo
+  if (info) {
+    return {
+      left: `${info.container} · ${info.videoCodec} · ${info.audioCodec} · ${info.width}×${info.height}`,
+      action: info.action,
+      label: info.actionLabel
+    }
+  }
+
+  const ext = item.path.substring(item.path.lastIndexOf('.')).toLowerCase()
+  const isNative = nativeExts.includes(ext)
+  return {
+    left: ext,
+    action: isNative ? 'native' : 'remux',
+    label: isNative ? 'Direct Native' : 'Remux'
+  }
+})
+
 onMounted(async () => {
     calculateVideoHeight()
     const port = await window.go.main.App.GetVideoServerPort()
     setVideoPort(port)
 })
+
+onUnmounted(() => {
+    destroyHls()
+    if (playerState.streamId) {
+        stopHlsStream(playerState.streamId)
+    }
+})
+
+function destroyHls() {
+    if (hlsInstance) {
+        hlsInstance.destroy()
+        hlsInstance = null
+    }
+}
 
 watch(() => playerState.seekTime, (newCurrentTime: number) => {
     const v = videoPlayerElement.value
@@ -56,9 +99,32 @@ watch(() => playerState.videoSrc, async (newVideoSrc, oldVideoSrc) => {
     return
   }
 
+  destroyHls()
+  isChangingSource = true
   v.pause()
 
-  if (newVideoSrc) {
+  if (!newVideoSrc) {
+    isChangingSource = false
+    return
+  }
+
+  const isHls = newVideoSrc.endsWith('.m3u8')
+
+  if (isHls) {
+    if (Hls.isSupported()) {
+      hlsInstance = new Hls()
+      hlsInstance.loadSource(newVideoSrc)
+      hlsInstance.attachMedia(v)
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (playerState.isPlaying) {
+          v.play().catch(e => console.error('hls play:', e))
+        }
+      })
+    } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
+      v.src = newVideoSrc
+      v.load()
+    }
+  } else {
     v.src = newVideoSrc
     v.load()
   }
@@ -73,8 +139,12 @@ watch(() => playerState.isPlaying, async (newPlaying, oldPlaying) => {
   }
 
   if (newPlaying) {
-    if (v.paused) {
-      await v.play()
+    if (v.paused && !isChangingSource) {
+      try {
+        await v.play()
+      } catch (e) {
+        console.error('isPlaying watcher play():', e)
+      }
     }
   } else {
     v.pause()
@@ -106,6 +176,10 @@ watch(() => playerState.fullScreen, () => {
     }
 })
 
+const onVideoPause = () => {
+  if (!isChangingSource) pause()
+}
+
 const onMetadataLoaded = () => {
   const v = videoPlayerElement.value
   if (!v) return
@@ -113,6 +187,7 @@ const onMetadataLoaded = () => {
   const { currentTime, playbackRate } = playerState
 
   const initVideo = async () => {
+    isChangingSource = false
     v.currentTime = currentTime
     v.playbackRate = playbackRate
     v.removeEventListener('canplay', initVideo)
@@ -145,10 +220,6 @@ const onVideoError = () => {
   const errorMessage = errorMap[v.error.code] || "An unknown video error occurred."
 
   console.error(`Video Error ${v.error.code}: ${errorMessage}`)
-
-  // Optional: Update your UI state to show a message to the user
-  // playerState.errorMessage = errorMessage
-  // playerState.isPlaying = false
 }
 
 const calculateVideoHeight = () => {
@@ -199,11 +270,11 @@ const progressBarClick = (e: PointerEvent) => {
     seek(percent)
 }
 
-const onVideoEnded = () => {
+const onVideoEnded = async () => {
     const nextItem = getNextPlaylistItem(playerState.repeat, playerState.shuffle)
     if (nextItem) {
       const restartTime = playerState.repeat === RepeatMode.One ? 0 : (nextItem.elapsedTime ?? 0)
-      playVideo(nextItem.path, restartTime)
+      await playVideo(nextItem.path, restartTime, nextItem.id)
       setPlaylistCurrentItem(nextItem.id)
     } else {
       if (playerState.shuffle) {
@@ -213,18 +284,18 @@ const onVideoEnded = () => {
     }
 }
 
-const playPreviousVideo = () => {
+const playPreviousVideo = async () => {
     const prevItem = getPreviousPlaylistItem(playerState.repeat, playerState.shuffle)
     if (prevItem) {
-      playVideo(prevItem.path, 0)
+      await playVideo(prevItem.path, 0, prevItem.id)
       setPlaylistCurrentItem(prevItem.id)
     }
 }
 
-const playNextVideo = () => {
+const playNextVideo = async () => {
     const nextItem = getNextPlaylistItem(playerState.repeat, playerState.shuffle)
     if (nextItem) {
-      playVideo(nextItem.path, 0)
+      await playVideo(nextItem.path, 0, nextItem.id)
       setPlaylistCurrentItem(nextItem.id)
     }
 }
@@ -253,7 +324,7 @@ const playNextVideo = () => {
               }
             }"
             @play="play"
-            @pause="pause"
+            @pause="onVideoPause"
             @click="togglePlay"
             crossorigin="anonymous"
             allowfullscreen
@@ -365,6 +436,14 @@ const playNextVideo = () => {
                     </button>
                 </div>
             </div>
+
+            <!-- Footer Info Bar -->
+            <div v-if="footerInfo" class="controls-footer">
+              <span class="footer-info-text">{{ footerInfo.left }}</span>
+              <span class="footer-action-badge" :class="'badge-' + footerInfo.action">
+                {{ footerInfo.label }}
+              </span>
+            </div>
         </div>
     </div>
 </template>
@@ -422,7 +501,7 @@ video {
 /* Thumbnail Preview */
 .thumbnail-preview {
   position: absolute;
-  bottom: 55px; /* Moved up to make room for time signature */
+  bottom: 55px;
   transform: translateX(-50%);
   background: #000;
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -513,4 +592,35 @@ video {
 #preview-video {
   display: none;
 }
+
+.controls-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 0 0;
+  font-size: 0.65rem;
+  font-family: monospace;
+  color: #888;
+}
+
+.footer-info-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footer-action-badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.6rem;
+}
+
+.footer-action-badge.badge-native { background: rgba(40,167,69,0.25); color: #28a745; }
+.footer-action-badge.badge-remux { background: rgba(0,123,255,0.25); color: #3b8cff; }
+.footer-action-badge.badge-hw_transcode { background: rgba(255,193,7,0.25); color: #ffc107; }
+.footer-action-badge.badge-sw_transcode { background: rgba(220,53,69,0.25); color: #dc3545; }
 </style>

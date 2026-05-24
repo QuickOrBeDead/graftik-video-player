@@ -22,6 +22,9 @@ declare global {
           GetPluginFile: (pluginId: string, fileName: string) => Promise<string>
           InstallPluginFromFile: (filePath: string) => Promise<PluginInstallResult>
           InstallPluginFromURL: (url: string) => Promise<PluginInstallResult>
+          GetStreamURL: (playlistItemId: string) => Promise<{ url: string; streamId?: string }>
+          StopHLSStream: (streamId: string) => Promise<void>
+          CreateAppMenu: () => Promise<any>
         }
       }
       internal: {
@@ -42,6 +45,30 @@ declare global {
           RebalancePlaylistOrder: (id: string) => Promise<any>
           OpenContainingFolder: (path: string) => Promise<any>
           InitNewPlaylistItems: (filePaths: string[]) => Promise<any>
+          GetStreamInfo: (videoPath: string) => Promise<{
+            container: string
+            videoCodec: string
+            audioCodec: string
+            width: number
+            height: number
+            action: string
+            actionLabel: string
+            hwEncoder?: string
+          }>
+          GetPreferences: () => Promise<{
+            currentPlaylist: string
+            shuffle: boolean
+            repeatMode: number
+            volumeLevel: number
+            playbackRate: number
+            sidebarVisible: boolean
+            sidebarWidth: number
+            windowWidth: number
+            windowHeight: number
+            isPlaying: boolean
+            lastPlayedItem: string
+          }>
+          SavePreferences: (settings: Record<string, any>) => Promise<void>
         }
       }
     }

@@ -1,5 +1,37 @@
 export namespace data {
 	
+	export class AppConfig {
+	    currentPlaylist: string;
+	    shuffle: boolean;
+	    repeatMode: number;
+	    volumeLevel: number;
+	    playbackRate: number;
+	    sidebarVisible: boolean;
+	    sidebarWidth: number;
+	    windowWidth: number;
+	    windowHeight: number;
+	    isPlaying: boolean;
+	    lastPlayedItem: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentPlaylist = source["currentPlaylist"];
+	        this.shuffle = source["shuffle"];
+	        this.repeatMode = source["repeatMode"];
+	        this.volumeLevel = source["volumeLevel"];
+	        this.playbackRate = source["playbackRate"];
+	        this.sidebarVisible = source["sidebarVisible"];
+	        this.sidebarWidth = source["sidebarWidth"];
+	        this.windowWidth = source["windowWidth"];
+	        this.windowHeight = source["windowHeight"];
+	        this.isPlaying = source["isPlaying"];
+	        this.lastPlayedItem = source["lastPlayedItem"];
+	    }
+	}
 	export class PlayerDataStore {
 	
 	
@@ -101,6 +133,46 @@ export namespace data {
 	        this.name = source["name"];
 	    }
 	}
+	export class StreamInfo {
+	    container: string;
+	    videoCodec: string;
+	    audioCodec: string;
+	    width: number;
+	    height: number;
+	    action: string;
+	    actionLabel: string;
+	    hwEncoder?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StreamInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.container = source["container"];
+	        this.videoCodec = source["videoCodec"];
+	        this.audioCodec = source["audioCodec"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.action = source["action"];
+	        this.actionLabel = source["actionLabel"];
+	        this.hwEncoder = source["hwEncoder"];
+	    }
+	}
+	export class StreamURLResult {
+	    url: string;
+	    streamId?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StreamURLResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.streamId = source["streamId"];
+	    }
+	}
 	export class ThumbnailDataStore {
 	
 	
@@ -129,6 +201,23 @@ export namespace data {
 	        this.lastModified = source["lastModified"];
 	        this.fileSize = source["fileSize"];
 	        this.thumbnail = source["thumbnail"];
+	    }
+	}
+
+}
+
+export namespace hls {
+	
+	export class Engine {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Engine(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
 	    }
 	}
 

@@ -18,6 +18,10 @@ export function GetPlugins() {
   return window['go']['main']['App']['GetPlugins']();
 }
 
+export function GetStreamURL(arg1) {
+  return window['go']['main']['App']['GetStreamURL'](arg1);
+}
+
 export function GetVideoServerPort() {
   return window['go']['main']['App']['GetVideoServerPort']();
 }
@@ -36,4 +40,8 @@ export function PickDirectory() {
 
 export function PickPluginFile() {
   return window['go']['main']['App']['PickPluginFile']();
+}
+
+export function StopHLSStream(arg1) {
+  return window['go']['main']['App']['StopHLSStream'](arg1);
 }

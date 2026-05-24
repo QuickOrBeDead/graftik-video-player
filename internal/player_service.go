@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"graftik-wails/internal/data"
+	"graftik-wails/internal/hls"
+	"graftik-wails/internal/media"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -24,6 +26,7 @@ type PlayerService struct {
 	thumbnailStore *data.ThumbnailDataStore
 	ffprobePath    string
 	ffmpegPath     string
+	hlsEngine      *hls.Engine
 }
 
 func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.ThumbnailDataStore) *PlayerService {
@@ -48,6 +51,18 @@ func (s *PlayerService) SetThumbnailStore(ts *data.ThumbnailDataStore) {
 func (s *PlayerService) SetFFmpegPaths(ffmpegPath, ffprobePath string) {
 	s.ffmpegPath = ffmpegPath
 	s.ffprobePath = ffprobePath
+}
+
+func (s *PlayerService) SetHlsEngine(engine *hls.Engine) {
+	s.hlsEngine = engine
+}
+
+func (s *PlayerService) FFprobePath() string {
+	return s.ffprobePath
+}
+
+func (s *PlayerService) FFmpegPath() string {
+	return s.ffmpegPath
 }
 
 func (s *PlayerService) GetCurrentPlaylist() *data.PlaylistDto {
@@ -230,6 +245,58 @@ func (s *PlayerService) InitNewPlaylistItems(filePaths []string) []data.Playlist
 		}
 	}
 	return items
+}
+
+func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
+	info, err := media.Probe(s.ffprobePath, videoPath)
+	if err != nil {
+		return &data.StreamInfo{
+			Action:      "sw_transcode",
+			ActionLabel: "SW Transcode",
+		}
+	}
+
+	if info.Action == "sw_transcode" && s.hlsEngine != nil {
+		hwEncoder := media.DetectHWEncoder(s.ffmpegPath)
+		if hwEncoder != "" {
+			info.Action = "hw_transcode"
+			info.ActionLabel = hwEncoderShortLabel(hwEncoder)
+			info.HWEncoder = hwEncoderShortLabel(hwEncoder)
+		}
+	}
+
+	return info
+}
+
+func hwEncoderShortLabel(name string) string {
+	switch name {
+	case "h264_nvenc":
+		return "NVENC"
+	case "h264_qsv":
+		return "QSV"
+	case "h264_amf":
+		return "AMF"
+	}
+	return name
+}
+
+func (s *PlayerService) GetPreferences() *data.AppConfig {
+	if s.store == nil {
+		return &data.AppConfig{
+			VolumeLevel:    1.0,
+			PlaybackRate:   1.0,
+			SidebarVisible: true,
+			SidebarWidth:   300,
+		}
+	}
+	return s.store.GetPreferences()
+}
+
+func (s *PlayerService) SavePreferences(settings map[string]any) {
+	if s.store == nil {
+		return
+	}
+	s.store.UpdateSettings(settings)
 }
 
 func (s *PlayerService) probeDuration(videoPath string) float64 {

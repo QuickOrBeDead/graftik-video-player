@@ -106,6 +106,10 @@ func (s *PlayerDataStore) UpdatePlaylist(id string, data map[string]any) error {
 	return s.repo.UpdatePlaylist(id, data)
 }
 
+func (s *PlayerDataStore) GetPlaylistItem(id string) *PlaylistItemDto {
+	return s.repo.GetPlaylistItemByID(id)
+}
+
 func (s *PlayerDataStore) UpdatePlaylistItem(id string, data map[string]any) error {
 	return s.repo.UpdatePlaylistItem(id, data)
 }
@@ -165,4 +169,12 @@ func (s *PlayerDataStore) AddPlaylistItems(items []PlaylistItemDto) {
 
 func (s *PlayerDataStore) RebalancePlaylistOrder(id string) error {
 	return s.repo.RebalancePlaylistOrder(id)
+}
+
+func (s *PlayerDataStore) GetPreferences() *AppConfig {
+	return s.config.GetPreferences()
+}
+
+func (s *PlayerDataStore) UpdateSettings(settings map[string]any) error {
+	return s.config.UpdateSettings(settings)
 }

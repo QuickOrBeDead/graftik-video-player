@@ -17,7 +17,8 @@ export interface PlayerState {
     progressBarHoverTime?: number
     showProgressBarHoverPreview: boolean,
     isSidebarResizing: boolean,
-    sidebarWidth: number
+    sidebarWidth: number,
+    streamId: string
 }
 
 export enum RepeatMode {
@@ -55,6 +56,18 @@ export interface PlaylistItem {
   progressPercent?: number,
   lastWatched?: Date,
   orderIndex: number
+  streamInfo?: StreamInfo
+}
+
+export interface StreamInfo {
+  container: string
+  videoCodec: string
+  audioCodec: string
+  width: number
+  height: number
+  action: string
+  actionLabel: string
+  hwEncoder?: string
 }
 
 export enum PlaylistViewMode {
@@ -77,4 +90,22 @@ export interface VideoMetadata {
   lastModified: number
   fileSize: number
   thumbnail: string
+}
+
+export interface StreamURLResult {
+  url: string
+  streamId?: string
+}
+
+export interface AppPreferences {
+  shuffle: boolean
+  repeatMode: number
+  volumeLevel: number
+  playbackRate: number
+  sidebarVisible: boolean
+  sidebarWidth: number
+  windowWidth: number
+  windowHeight: number
+  isPlaying: boolean
+  lastPlayedItem: string
 }

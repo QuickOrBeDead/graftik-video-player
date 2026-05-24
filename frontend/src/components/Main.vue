@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { usePlayer } from './video-player/composables/usePlayer'
+import { usePlaylist } from './video-player/composables/usePlaylist'
 import { Playlist, VideoPlayer } from './video-player'
 import { PlaylistDto as DbPlaylist } from '@renderer/data/playlist'
 import PlaylistsModal from './Playlists.vue'
@@ -8,13 +10,33 @@ import PluginPanel from './PluginPanel.vue'
 import PluginUIHost from './PluginUIHost.vue'
 import type { PluginInfo } from '@renderer/data/plugin'
 
+const { playerState, applyPreferences } = usePlayer()
+const { playlistState } = usePlaylist()
+
 const playlist = ref<Playlist | null>(null)
 const showPlaylistsModal = ref(false)
 const showNewPlaylistModal = ref(false)
 const showPluginPanel = ref(false)
 const activePluginUI = ref<PluginInfo | null>(null)
 
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+
+function scheduleSave(data: Record<string, any>) {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    window.go.internal.PlayerService.SavePreferences(data)
+  }, 500)
+}
+
 onMounted(async () => {
+  // Load preferences first so isPlaying state is known before playlist loads
+  try {
+    const prefs = await window.go.internal.PlayerService.GetPreferences()
+    if (prefs) applyPreferences(prefs)
+  } catch (e) {
+    console.error('Load preferences error:', e)
+  }
+
   await loadPlaylist()
 
   window.runtime.EventsOn('load-current-playlist', (p: unknown) => {
@@ -42,6 +64,21 @@ onMounted(async () => {
   window.runtime.EventsOn('open-plugin-panel', () => {
     showPluginPanel.value = true
   })
+})
+
+onUnmounted(() => {
+  if (saveTimer) clearTimeout(saveTimer)
+})
+
+watch(() => playerState.shuffle, (v) => scheduleSave({ shuffle: v }))
+watch(() => playerState.repeat, (v) => scheduleSave({ repeatMode: v }))
+watch(() => playerState.volumeLevel, (v) => scheduleSave({ volumeLevel: v }))
+watch(() => playerState.playbackRate, (v) => scheduleSave({ playbackRate: v }))
+watch(() => playerState.sidebarVisible, (v) => scheduleSave({ sidebarVisible: v }))
+watch(() => playerState.sidebarWidth, (v) => scheduleSave({ sidebarWidth: v }))
+watch(() => playerState.isPlaying, (v) => scheduleSave({ isPlaying: v }))
+watch(() => playlistState.currentItem, (v) => {
+  if (v) scheduleSave({ lastPlayedItem: v })
 })
 
 const loadPlaylist = async () => {
