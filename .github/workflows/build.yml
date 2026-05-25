@@ -70,7 +70,7 @@ jobs:
         run: go install -tags webkit2_gtk_4_1 github.com/wailsapp/wails/v2/cmd/wails@latest
 
       - name: Build
-        run: wails build -platform ${{ matrix.platform }} -clean
+        run: wails build -platform ${{ matrix.platform }} -clean -tags webkit2_gtk_4_1
         env:
           CGO_ENABLED: 1
 
