@@ -11,7 +11,7 @@ import { usePlaylist } from './composables/usePlaylist'
 import { PlaylistItemDto } from '@renderer/data/playlist'
 
 const props = defineProps<{ playlist: Playlist | null }>()
-const { playerState, shouldAutoplay, playVideo, progressPercent, pause } = usePlayer()
+const { playerState, playVideo, progressPercent, pause } = usePlayer()
 const {
   playlistState,
   filteredPlaylist,
@@ -42,7 +42,7 @@ watch(
       setPlaylist(newData)
 
       const currentPlaylistItem = getCurrentPlaylistItem()
-      if (currentPlaylistItem && shouldAutoplay.value) {
+      if (currentPlaylistItem && playerState.shouldAutoplay) {
         nextTick(async () => {
           await playItem(currentPlaylistItem)
         })

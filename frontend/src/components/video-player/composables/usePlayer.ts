@@ -26,13 +26,13 @@ const state = reactive<PlayerState>({
     showProgressBarHoverPreview: false,
     isSidebarResizing: false,
     sidebarWidth: 300,
-    streamId: ''
+    streamId: '',
+    shouldAutoplay: false
 })
 
 export function usePlayer() {
     let lastVolumeLevel = state.volumeLevel
     const repeatModes = [RepeatMode.Off, RepeatMode.All, RepeatMode.One]
-    const shouldAutoplay = ref(false)
 
     const toggleShuffle = () => {
       state.shuffle = !state.shuffle
@@ -231,7 +231,7 @@ export function usePlayer() {
       state.playbackRate = prefs.playbackRate
       state.sidebarVisible = prefs.sidebarVisible
       state.sidebarWidth = prefs.sidebarWidth
-      shouldAutoplay.value = prefs.isPlaying
+      state.shouldAutoplay = prefs.isPlaying
     }
 
     const setSidebarWidth = (width: number) => {
@@ -254,7 +254,6 @@ export function usePlayer() {
 
     return {
       playerState: readonly(state),
-      shouldAutoplay,
       toggleMute,
       toggleShuffle,
       toggleRepeatMode,

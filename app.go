@@ -23,16 +23,16 @@ import (
 )
 
 type App struct {
-	ctx            context.Context
-	Service        *internal.PlayerService
-	store          *data.PlayerDataStore
-	thumbnailStore *data.ThumbnailDataStore
-	ffmpegDir      string
-	videoServer    *VideoServer
-	hlsEngine      *hls.Engine
+	ctx             context.Context
+	Service         *internal.PlayerService
+	store           *data.PlayerDataStore
+	thumbnailStore  *data.ThumbnailDataStore
+	ffmpegDir       string
+	videoServer     *VideoServer
+	hlsEngine       *hls.Engine
 	currentStreamID string
-	pluginManager  *plugin.Manager
-	pluginsDir     string
+	pluginManager   *plugin.Manager
+	pluginsDir      string
 }
 
 func NewApp() *App {
@@ -159,7 +159,8 @@ func (a *App) startup(ctx context.Context) {
 
 	// Restore window size from prefs
 	if a.store != nil {
-		if w, h := a.store.GetPreferences().WindowWidth, a.store.GetPreferences().WindowHeight; w > 0 && h > 0 {
+		prefs := a.store.GetPreferences()
+		if w, h := prefs.WindowWidth, prefs.WindowHeight; w > 0 && h > 0 {
 			wailsRuntime.WindowSetSize(ctx, w, h)
 		}
 	}

@@ -18,7 +18,8 @@ export interface PlayerState {
     showProgressBarHoverPreview: boolean,
     isSidebarResizing: boolean,
     sidebarWidth: number,
-    streamId: string
+    streamId: string,
+    shouldAutoplay: boolean
 }
 
 export enum RepeatMode {

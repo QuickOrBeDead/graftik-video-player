@@ -32,7 +32,9 @@ onMounted(async () => {
   // Load preferences first so isPlaying state is known before playlist loads
   try {
     const prefs = await window.go.internal.PlayerService.GetPreferences()
-    if (prefs) applyPreferences(prefs)
+    if (prefs) {
+      applyPreferences(prefs)
+    }
   } catch (e) {
     console.error('Load preferences error:', e)
   }
