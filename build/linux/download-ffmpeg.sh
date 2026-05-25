@@ -23,13 +23,13 @@ echo "Downloading $ARCHIVE ..."
 curl -L -o "/tmp/$ARCHIVE" "$BASE_URL/$ARCHIVE"
 
 echo "Extracting ffmpeg and ffprobe ..."
-EXTRACT_DIR="ffmpeg-${FFMPEG_VERSION}-${ARCH}-static"
 tar -xf "/tmp/$ARCHIVE" -C "/tmp/"
-cp "/tmp/$EXTRACT_DIR/ffmpeg" "$OUT_DIR/"
-cp "/tmp/$EXTRACT_DIR/ffprobe" "$OUT_DIR/"
+EXTRACT_DIR="$(find /tmp -mindepth 1 -maxdepth 1 -type d -name 'ffmpeg-*' | head -1)"
+cp "$EXTRACT_DIR/ffmpeg" "$OUT_DIR/"
+cp "$EXTRACT_DIR/ffprobe" "$OUT_DIR/"
 chmod +x "$OUT_DIR/ffmpeg" "$OUT_DIR/ffprobe"
 
 rm -f "/tmp/$ARCHIVE"
-rm -rf "/tmp/$EXTRACT_DIR"
+rm -rf "$EXTRACT_DIR"
 
 echo "ffmpeg/ffprobe downloaded to: $OUT_DIR"
