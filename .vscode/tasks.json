@@ -9,7 +9,9 @@
         "build",
         "-debug",
         "-o",
-        "GraftikVideoPlayer.exe"
+        "GraftikVideoPlayer.exe",
+        "-tags",
+        "webkit2_41"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

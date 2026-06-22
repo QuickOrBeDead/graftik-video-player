@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"graftik-wails/internal"
@@ -91,10 +92,15 @@ func (a *App) startup(ctx context.Context) {
 		println("Error starting video server:", err.Error())
 	}
 
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+
 	// Locate ffmpeg/ffprobe - first check bundled, then PATH
 	a.ffmpegDir = a.findFFmpegDir()
-	ffmpegPath := filepath.Join(a.ffmpegDir, "ffmpeg.exe")
-	ffprobePath := filepath.Join(a.ffmpegDir, "ffprobe.exe")
+	ffmpegPath := filepath.Join(a.ffmpegDir, "ffmpeg"+ext)
+	ffprobePath := filepath.Join(a.ffmpegDir, "ffprobe"+ext)
 
 	// Init HLS engine
 	hlsDir := filepath.Join(os.TempDir(), "graftik-hls")

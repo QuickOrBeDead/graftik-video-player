@@ -196,7 +196,11 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 	)
 	extractCmd.Stderr = &ffmpegStderr
 	if err := extractCmd.Run(); err != nil {
-		fmt.Printf("ffmpeg thumbnail error: %s\n", ffmpegStderr.String())
+		stderr := ffmpegStderr.String()
+		if stderr == "" {
+			stderr = err.Error()
+		}
+		fmt.Printf("ffmpeg thumbnail error: %s\n", stderr)
 		return &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
@@ -237,11 +241,11 @@ func (s *PlayerService) InitNewPlaylistItems(filePaths []string) []data.Playlist
 	items := make([]data.PlaylistItemDto, len(filePaths))
 	for i, fp := range filePaths {
 		items[i] = data.PlaylistItemDto{
-			ID:          uuid.New().String(),
-			Path:        fp,
-			Title:       filepath.Base(fp),
-			OrderIndex:  0,
-			PlaylistID:  "",
+			ID:         uuid.New().String(),
+			Path:       fp,
+			Title:      filepath.Base(fp),
+			OrderIndex: 0,
+			PlaylistID: "",
 		}
 	}
 	return items
@@ -310,7 +314,11 @@ func (s *PlayerService) probeDuration(videoPath string) float64 {
 	cmd.Stderr = &ffprobeStderr
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("ffprobe error: %s\n", ffprobeStderr.String())
+		stderr := ffprobeStderr.String()
+		if stderr == "" {
+			stderr = err.Error()
+		}
+		fmt.Printf("ffprobe error: %s\n", err)
 		return 0
 	}
 
