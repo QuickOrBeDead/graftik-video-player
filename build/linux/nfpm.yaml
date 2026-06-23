@@ -10,10 +10,16 @@ homepage: "https://github.com/QuickOrBeDead/graftik-video-player"
 license: "MIT"
 contents:
   - src: ../bin/graftik-video-player
+    dst: /usr/lib/graftik-video-player/graftik-video-player
+  - src: ../bin/bin/ffmpeg
+    dst: /usr/lib/graftik-video-player/bin/ffmpeg
+  - src: ../bin/bin/ffprobe
+    dst: /usr/lib/graftik-video-player/bin/ffprobe
+  - type: symlink
     dst: /usr/bin/graftik-video-player
+    src: /usr/lib/graftik-video-player/graftik-video-player
   - src: graftik-video-player.desktop
     dst: /usr/share/applications/graftik-video-player.desktop
-  # Multi-res hicolor layout assets
   - src: ../16x16.png
     dst: /usr/share/icons/hicolor/16x16/apps/graftik-video-player.png
   - src: ../24x24.png

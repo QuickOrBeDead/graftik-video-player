@@ -98,6 +98,17 @@ jobs:
           cp build/darwin/bin/ffprobe "build/bin/graftik-video-player.app/Contents/MacOS/bin/"
           chmod +x "build/bin/graftik-video-player.app/Contents/MacOS/bin/"*
 
+      - name: Install nfpm
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt update && sudo apt install nfpm
+
+      - name: Build .deb package
+        if: matrix.os == 'ubuntu-latest'
+        run: nfpm pkg --packager deb --target ${{ github.workspace }}/build/bin/
+        working-directory: build/linux
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
