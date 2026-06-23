@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Version=0.1
+Version=1.0
 Name=Graftik Video Player
 Comment=Play your favorite videos
 Exec=/usr/bin/graftik-video-player
