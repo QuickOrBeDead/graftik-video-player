@@ -3,7 +3,7 @@
 # Usage: ./bundle.sh [path-to-binary]
 set -euo pipefail
 
-APP_NAME="GraftikVideoPlayer"
+APP_NAME="graftik-video-player"
 BINARY="${1:-../bin/$APP_NAME}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"

@@ -93,14 +93,14 @@ jobs:
       - name: Bundle FFmpeg with .app bundle (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          mkdir -p "build/bin/GraftikVideoPlayer.app/Contents/MacOS/bin"
-          cp build/darwin/bin/ffmpeg "build/bin/GraftikVideoPlayer.app/Contents/MacOS/bin/"
-          cp build/darwin/bin/ffprobe "build/bin/GraftikVideoPlayer.app/Contents/MacOS/bin/"
-          chmod +x "build/bin/GraftikVideoPlayer.app/Contents/MacOS/bin/"*
+          mkdir -p "build/bin/graftik-video-player.app/Contents/MacOS/bin"
+          cp build/darwin/bin/ffmpeg "build/bin/graftik-video-player.app/Contents/MacOS/bin/"
+          cp build/darwin/bin/ffprobe "build/bin/graftik-video-player.app/Contents/MacOS/bin/"
+          chmod +x "build/bin/graftik-video-player.app/Contents/MacOS/bin/"*
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: GraftikVideoPlayer-${{ matrix.os }}
+          name: graftik-video-player-${{ matrix.os }}
           path: build/bin/**
           if-no-files-found: warn

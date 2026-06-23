@@ -13,6 +13,9 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed build/appicon.png
+var appIcon []byte
+
 func main() {
 	app := NewApp()
 
@@ -36,7 +39,12 @@ func main() {
 		Windows: &windows.Options{
 			WebviewIsTransparent: false,
 		},
-		Linux: &linux.Options{},
+		Linux: &linux.Options{
+			WindowIsTranslucent: false,
+			WebviewGpuPolicy:    linux.WebviewGpuPolicyAlways,
+			ProgramName:         "graftik-video-player",
+			Icon:                appIcon,
+		},
 	})
 
 	if err != nil {

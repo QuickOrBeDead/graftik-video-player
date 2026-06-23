@@ -9,7 +9,7 @@
         "build",
         "-debug",
         "-o",
-        "GraftikVideoPlayer.exe",
+        "graftik-video-player",
         "-tags",
         "webkit2_41"
       ],

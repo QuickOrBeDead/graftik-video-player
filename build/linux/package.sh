@@ -3,7 +3,7 @@
 # Usage: ./package.sh [path-to-binary]
 set -euo pipefail
 
-APP_NAME="GraftikVideoPlayer"
+APP_NAME="graftik-video-player"
 BINARY="${1:-../bin/$APP_NAME}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -29,7 +29,7 @@ fi
 cat > "$STAGING_DIR/$APP_NAME.sh" << 'LAUNCHER'
 #!/bin/bash
 DIR="$(cd "$(dirname "$0")" && pwd)"
-"$DIR/GraftikVideoPlayer" "$@"
+"$DIR/graftik-video-player" "$@"
 LAUNCHER
 chmod +x "$STAGING_DIR/$APP_NAME.sh"
 
