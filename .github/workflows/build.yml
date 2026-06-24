@@ -2,8 +2,6 @@ name: Build
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -15,40 +13,128 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            script: build:win
-          - os: macos-latest
-            script: build:mac
+            platform: windows/amd64
           - os: ubuntu-latest
-            script: build:linux
+            platform: linux/amd64
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main branch
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if ! git branch -r --contains "${{ github.ref_name }}" | grep -q 'origin/main'; then
+            echo "Tag ${{ github.ref_name }} is not on main branch. Aborting."
+            exit 1
+          fi
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "value=${github.ref_name#v}" >> $GITHUB_OUTPUT
+          else
+            echo "value=$(git describe --tags --abbrev=0 2>/dev/null || echo '0.0.0')" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: choco install mingw -y
+
+      - name: Install frontend dependencies
         run: npm ci
+        working-directory: frontend
+
+      - name: Download FFmpeg (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: .\build\windows\download-ffmpeg.ps1
+
+      - name: Download FFmpeg (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: bash build/linux/download-ffmpeg.sh
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
       - name: Build
-        run: npm run ${{ matrix.script }}
+        run: wails build -platform ${{ matrix.platform }} -clean -tags webkit2_41 -ldflags "-X main.appVersion=${{ steps.version.outputs.value }}"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CGO_ENABLED: 1
+
+      - name: Bundle FFmpeg with executable (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "build/bin/bin" -Force
+          Copy-Item "build/windows/bin/ffmpeg.exe" "build/bin/bin/"
+          Copy-Item "build/windows/bin/ffprobe.exe" "build/bin/bin/"
+
+      - name: Bundle FFmpeg with executable (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p "build/bin/bin"
+          cp build/linux/bin/ffmpeg build/bin/bin/
+          cp build/linux/bin/ffprobe build/bin/bin/
+          chmod +x build/bin/bin/*
+
+      - name: Install nfpm
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt update && sudo apt install nfpm
+
+      - name: Build .deb package
+        if: matrix.os == 'ubuntu-latest'
+        run: nfpm pkg --packager deb --version "${{ steps.version.outputs.value }}" --target ${{ github.workspace }}/build/bin/
+        working-directory: build/linux
+
+      - name: Create GitHub Release (Linux)
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest'
+        run: |
+          PRERELEASE=""
+          if [[ "${{ github.ref_name }}" == *-beta* ]]; then
+            PRERELEASE="--prerelease"
+          fi
+          gh release create "${{ github.ref_name }}" $PRERELEASE \
+            --title "${{ github.ref_name }}" \
+            --notes "See the commits for details." \
+            build/bin/*.deb
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Upload Windows installer to release
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.os == 'windows-latest'
+        run: |
+          gh release upload "${{ github.ref_name }}" build/bin/*-installer.exe --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-artifacts
-          path: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.AppImage
-            dist/*.snap
-            dist/*.deb
-          if-no-files-found: ignore
+          name: graftik-video-player-${{ matrix.os }}
+          path: build/bin/**
+          if-no-files-found: warn

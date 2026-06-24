@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Graftik Video Player
+Comment=Play your favorite videos
+Exec=/usr/bin/graftik-video-player
+Icon=graftik-video-player
+Terminal=false
+Categories=Video;AudioVideo;Player;

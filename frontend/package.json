@@ -1,0 +1,36 @@
+{
+  "name": "graftik-video-player",
+  "version": "0.0.7",
+  "description": "Video Player application",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts,.vue --fix",
+    "format": "prettier --write .",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@imengyu/vue3-context-menu": "^1.5.4",
+    "@popperjs/core": "^2.11.8",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
+    "hls.js": "^1.6.16",
+    "mousetrap": "^1.6.5",
+    "p-limit": "^7.3.0",
+    "uuid": "^14.0.1",
+    "vue": "^3.5.38",
+    "vuedraggable": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^5.2.11",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "eslint": "^10.5.0",
+    "eslint-plugin-vue": "^10.9.2",
+    "prettier": "^3.8.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0",
+    "vue-tsc": "^3.3.5"
+  }
+}
