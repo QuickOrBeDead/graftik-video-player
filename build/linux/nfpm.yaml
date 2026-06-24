@@ -1,7 +1,7 @@
 name: "graftik-video-player"
 arch: "amd64"
 platform: "linux"
-version: "0.0.1"
+version: "0.0.1" # overridden by --version flag in CI release workflow
 section: "video"
 priority: "optional"
 maintainer: "Bora Akgün <boraakgn@gmail.com>"

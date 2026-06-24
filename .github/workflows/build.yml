@@ -2,9 +2,6 @@ name: Build
 
 on:
   push:
-    branches:
-      - main
-      - develop
     tags:
       - 'v*'
   workflow_dispatch:
@@ -17,8 +14,6 @@ jobs:
         include:
           - os: windows-latest
             platform: windows/amd64
-          - os: macos-latest
-            platform: darwin/universal
           - os: ubuntu-latest
             platform: linux/amd64
 
@@ -27,6 +22,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main branch
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if ! git branch -r --contains "${{ github.ref_name }}" | grep -q 'origin/main'; then
+            echo "Tag ${{ github.ref_name }} is not on main branch. Aborting."
+            exit 1
+          fi
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "value=${github.ref_name#v}" >> $GITHUB_OUTPUT
+          else
+            echo "value=$(git describe --tags --abbrev=0 2>/dev/null || echo '0.0.0')" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -62,15 +76,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: bash build/linux/download-ffmpeg.sh
 
-      - name: Download FFmpeg (macOS)
-        if: matrix.os == 'macos-latest'
-        run: bash build/darwin/download-ffmpeg.sh
-
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
       - name: Build
-        run: wails build -platform ${{ matrix.platform }} -clean -tags webkit2_41
+        run: wails build -platform ${{ matrix.platform }} -clean -tags webkit2_41 -ldflags "-X main.appVersion=${{ steps.version.outputs.value }}"
         env:
           CGO_ENABLED: 1
 
@@ -90,14 +100,6 @@ jobs:
           cp build/linux/bin/ffprobe build/bin/bin/
           chmod +x build/bin/bin/*
 
-      - name: Bundle FFmpeg with .app bundle (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          mkdir -p "build/bin/graftik-video-player.app/Contents/MacOS/bin"
-          cp build/darwin/bin/ffmpeg "build/bin/graftik-video-player.app/Contents/MacOS/bin/"
-          cp build/darwin/bin/ffprobe "build/bin/graftik-video-player.app/Contents/MacOS/bin/"
-          chmod +x "build/bin/graftik-video-player.app/Contents/MacOS/bin/"*
-
       - name: Install nfpm
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -106,8 +108,29 @@ jobs:
 
       - name: Build .deb package
         if: matrix.os == 'ubuntu-latest'
-        run: nfpm pkg --packager deb --target ${{ github.workspace }}/build/bin/
+        run: nfpm pkg --packager deb --version "${{ steps.version.outputs.value }}" --target ${{ github.workspace }}/build/bin/
         working-directory: build/linux
+
+      - name: Create GitHub Release (Linux)
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest'
+        run: |
+          PRERELEASE=""
+          if [[ "${{ github.ref_name }}" == *-beta* ]]; then
+            PRERELEASE="--prerelease"
+          fi
+          gh release create "${{ github.ref_name }}" $PRERELEASE \
+            --title "${{ github.ref_name }}" \
+            --notes "See the commits for details." \
+            build/bin/*.deb
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Upload Windows installer to release
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.os == 'windows-latest'
+        run: |
+          gh release upload "${{ github.ref_name }}" build/bin/*-installer.exe --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

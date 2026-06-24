@@ -8,6 +8,7 @@ import PlaylistsModal from './Playlists.vue'
 import NewPlaylistModal from './NewPlaylist.vue'
 import PluginPanel from './PluginPanel.vue'
 import PluginUIHost from './PluginUIHost.vue'
+import UpdateDialog from './UpdateDialog.vue'
 import type { PluginInfo } from '@renderer/data/plugin'
 
 const { playerState, applyPreferences } = usePlayer()
@@ -18,6 +19,8 @@ const showPlaylistsModal = ref(false)
 const showNewPlaylistModal = ref(false)
 const showPluginPanel = ref(false)
 const activePluginUI = ref<PluginInfo | null>(null)
+const showUpdateDialog = ref(false)
+const updateAvailable = ref('')
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -65,6 +68,18 @@ onMounted(async () => {
 
   window.runtime.EventsOn('open-plugin-panel', () => {
     showPluginPanel.value = true
+  })
+
+  window.runtime.EventsOn('update-available', (version: string) => {
+    updateAvailable.value = version
+  })
+
+  window.runtime.EventsOn('check-for-updates', () => {
+    showUpdateDialog.value = true
+  })
+
+  window.runtime.EventsOn('show-about', () => {
+    showUpdateDialog.value = true
   })
 })
 
@@ -123,9 +138,45 @@ function onOpenPlugin(plugin: PluginInfo, action: string) {
 </script>
 
 <template>
-  <video-player :playlist="playlist"></video-player>
+  <div class="position-relative">
+    <video-player :playlist="playlist"></video-player>
+    <div
+      v-if="updateAvailable"
+      class="update-badge"
+      @click="showUpdateDialog = true"
+      title="Update available"
+    >
+      <i class="bi bi-arrow-up-circle-fill"></i>
+    </div>
+  </div>
   <PlaylistsModal v-if="showPlaylistsModal" @close="showPlaylistsModal = false" />
   <NewPlaylistModal v-if="showNewPlaylistModal" @close="showNewPlaylistModal = false" />
   <PluginPanel v-if="showPluginPanel" @close="showPluginPanel = false" @openPlugin="onOpenPlugin" />
   <PluginUIHost v-if="activePluginUI" :plugin="activePluginUI" @close="activePluginUI = null" />
+  <UpdateDialog v-if="showUpdateDialog" @close="showUpdateDialog = false" />
 </template>
+
+<style scoped>
+.update-badge {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 9999;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #0d6efd;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  transition: transform 0.15s;
+}
+.update-badge:hover {
+  transform: scale(1.1);
+  background-color: #0b5ed7;
+}
+</style>

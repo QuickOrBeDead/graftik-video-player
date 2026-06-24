@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"graftik-wails/internal"
 	"graftik-wails/internal/data"
@@ -34,6 +35,7 @@ type App struct {
 	currentStreamID string
 	pluginManager   *plugin.Manager
 	pluginsDir      string
+	updateETag      string
 }
 
 func NewApp() *App {
@@ -170,6 +172,19 @@ func (a *App) startup(ctx context.Context) {
 			wailsRuntime.WindowSetSize(ctx, w, h)
 		}
 	}
+
+	// Background update check on startup
+	go func() {
+		time.Sleep(5 * time.Second)
+		info, err := a.CheckForUpdates()
+		if err != nil {
+			println("update check error:", err.Error())
+			return
+		}
+		if info != nil && info.HasUpdate {
+			wailsRuntime.EventsEmit(ctx, "update-available", info.LatestVersion)
+		}
+	}()
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -488,6 +503,22 @@ func (a *App) CreateAppMenu() *menu.Menu {
 	fileMenu.AddText("Exit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
 		if a.ctx != nil {
 			wailsRuntime.Quit(a.ctx)
+		}
+	})
+
+	helpMenu := appMenu.AddSubmenu("Help")
+
+	helpMenu.AddText("Check for Updates", nil, func(_ *menu.CallbackData) {
+		if a.ctx != nil {
+			wailsRuntime.EventsEmit(a.ctx, "check-for-updates")
+		}
+	})
+
+	helpMenu.AddSeparator()
+
+	helpMenu.AddText("About", nil, func(_ *menu.CallbackData) {
+		if a.ctx != nil {
+			wailsRuntime.EventsEmit(a.ctx, "show-about")
 		}
 	})
 
