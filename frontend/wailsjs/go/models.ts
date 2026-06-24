@@ -242,6 +242,29 @@ export namespace keys {
 
 }
 
+export namespace main {
+	
+	export class UpdateInfo {
+	    hasUpdate: boolean;
+	    latestVersion: string;
+	    downloadUrl: string;
+	    releaseNotes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hasUpdate = source["hasUpdate"];
+	        this.latestVersion = source["latestVersion"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.releaseNotes = source["releaseNotes"];
+	    }
+	}
+
+}
+
 export namespace menu {
 	
 	export class MenuItem {

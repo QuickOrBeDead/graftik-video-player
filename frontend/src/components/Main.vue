@@ -138,7 +138,7 @@ function onOpenPlugin(plugin: PluginInfo, action: string) {
 </script>
 
 <template>
-  <div class="position-relative">
+  <div class="position-relative d-flex">
     <video-player :playlist="playlist"></video-player>
     <div
       v-if="updateAvailable"
