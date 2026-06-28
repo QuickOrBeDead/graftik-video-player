@@ -9,6 +9,7 @@ const emit = defineEmits<{
 
 const modalRef = ref<HTMLDivElement>()
 const appVersion = ref('')
+const releaseYear = ref('')
 
 const GITHUB_URL = 'https://github.com/QuickOrBeDead/graftik-video-player'
 const GITHUB_PROFILE = 'https://github.com/QuickOrBeDead'
@@ -21,6 +22,7 @@ onMounted(async () => {
   modalRef.value!.addEventListener('hidden.bs.modal', () => emit('close'))
 
   appVersion.value = await (window as any).go.main.App.GetAppVersion() as string
+  releaseYear.value = await (window as any).go.main.App.GetReleaseYear() as string
 })
 
 function openLink(url: string) {
@@ -58,7 +60,7 @@ function openLink(url: string) {
                 </a>
               </p>
               <div class="small text-secondary" style="font-size: 0.8rem;">
-                Copyright &copy; 2026
+                Copyright &copy; 2026<span v-if="releaseYear !== '2026'"> - {{ releaseYear }}</span>
               </div>
             </div>
           </div>

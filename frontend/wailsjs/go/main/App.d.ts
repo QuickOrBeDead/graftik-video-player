@@ -19,6 +19,8 @@ export function GetPluginFile(arg1:string,arg2:string):Promise<string>;
 
 export function GetPlugins():Promise<Array<plugin.PluginInfo>>;
 
+export function GetReleaseYear():Promise<string>;
+
 export function GetStreamURL(arg1:string):Promise<data.StreamURLResult>;
 
 export function GetVideoServerPort():Promise<number>;

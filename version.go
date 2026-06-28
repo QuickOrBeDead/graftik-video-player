@@ -17,6 +17,7 @@ import (
 )
 
 var appVersion = "0.0.0"
+var releaseYear = "" // set via ldflags to freeze at build time
 
 type UpdateInfo struct {
 	HasUpdate     bool   `json:"hasUpdate"`
@@ -39,6 +40,13 @@ type githubAsset struct {
 
 func (a *App) GetAppVersion() string {
 	return appVersion
+}
+
+func (a *App) GetReleaseYear() string {
+	if releaseYear != "" {
+		return releaseYear
+	}
+	return strconv.Itoa(time.Now().Year())
 }
 
 func (a *App) CheckForUpdates() (*UpdateInfo, error) {

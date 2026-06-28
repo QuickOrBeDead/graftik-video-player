@@ -30,6 +30,10 @@ export function GetPlugins() {
   return window['go']['main']['App']['GetPlugins']();
 }
 
+export function GetReleaseYear() {
+  return window['go']['main']['App']['GetReleaseYear']();
+}
+
 export function GetStreamURL(arg1) {
   return window['go']['main']['App']['GetStreamURL'](arg1);
 }
