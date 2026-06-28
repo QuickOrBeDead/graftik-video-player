@@ -74,13 +74,29 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Download FFmpeg (Windows)
+      - name: Cache FFmpeg (Windows)
         if: matrix.os == 'windows-latest'
+        id: cache-ffmpeg-windows
+        uses: actions/cache@v4
+        with:
+          path: build/windows/bin
+          key: ffmpeg-windows-${{ runner.arch }}-20260628
+
+      - name: Download FFmpeg (Windows)
+        if: matrix.os == 'windows-latest' && steps.cache-ffmpeg-windows.outputs.cache-hit != 'true'
         shell: pwsh
         run: .\build\windows\download-ffmpeg.ps1
 
-      - name: Download FFmpeg (Linux)
+      - name: Cache FFmpeg (Linux)
         if: matrix.os == 'ubuntu-latest'
+        id: cache-ffmpeg-linux
+        uses: actions/cache@v4
+        with:
+          path: build/linux/bin
+          key: ffmpeg-linux-${{ runner.arch }}-20260628
+
+      - name: Download FFmpeg (Linux)
+        if: matrix.os == 'ubuntu-latest' && steps.cache-ffmpeg-linux.outputs.cache-hit != 'true'
         run: bash build/linux/download-ffmpeg.sh
 
       - name: Install Wails CLI
