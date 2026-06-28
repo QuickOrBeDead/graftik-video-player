@@ -27,6 +27,7 @@ jobs:
 
       - name: Verify tag is on main branch
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: |
           if ! git branch -r --contains "${{ github.ref_name }}" | grep -q 'origin/main'; then
             echo "Tag ${{ github.ref_name }} is not on main branch. Aborting."
@@ -35,6 +36,7 @@ jobs:
 
       - name: Extract version
         id: version
+        shell: bash
         run: |
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             REF_NAME="${{ github.ref_name }}"
@@ -109,8 +111,10 @@ jobs:
 
       - name: Build .deb package
         if: matrix.os == 'ubuntu-latest'
-        run: nfpm pkg --packager deb --version "${{ steps.version.outputs.value }}" --target ${{ github.workspace }}/build/bin/
+        run: nfpm pkg --packager deb --target ${{ github.workspace }}/build/bin/
         working-directory: build/linux
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
 
       - name: Create GitHub Release (Linux)
         if: startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest'
