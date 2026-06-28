@@ -26,10 +26,10 @@ type UpdateInfo struct {
 }
 
 type githubRelease struct {
-	TagName     string          `json:"tag_name"`
-	Body        string          `json:"body"`
-	PublishedAt string          `json:"published_at"`
-	Assets      []githubAsset   `json:"assets"`
+	TagName     string        `json:"tag_name"`
+	Body        string        `json:"body"`
+	PublishedAt string        `json:"published_at"`
+	Assets      []githubAsset `json:"assets"`
 }
 
 type githubAsset struct {
@@ -63,6 +63,11 @@ func (a *App) CheckForUpdates() (*UpdateInfo, error) {
 	if resp.StatusCode == http.StatusNotModified {
 		return nil, nil
 	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
 	}

@@ -9,6 +9,7 @@ import NewPlaylistModal from './NewPlaylist.vue'
 import PluginPanel from './PluginPanel.vue'
 import PluginUIHost from './PluginUIHost.vue'
 import UpdateDialog from './UpdateDialog.vue'
+import AboutDialog from './AboutDialog.vue'
 import type { PluginInfo } from '@renderer/data/plugin'
 
 const { playerState, applyPreferences } = usePlayer()
@@ -20,6 +21,7 @@ const showNewPlaylistModal = ref(false)
 const showPluginPanel = ref(false)
 const activePluginUI = ref<PluginInfo | null>(null)
 const showUpdateDialog = ref(false)
+const showAboutDialog = ref(false)
 const updateAvailable = ref('')
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -79,7 +81,7 @@ onMounted(async () => {
   })
 
   window.runtime.EventsOn('show-about', () => {
-    showUpdateDialog.value = true
+    showAboutDialog.value = true
   })
 })
 
@@ -154,6 +156,7 @@ function onOpenPlugin(plugin: PluginInfo, action: string) {
   <PluginPanel v-if="showPluginPanel" @close="showPluginPanel = false" @openPlugin="onOpenPlugin" />
   <PluginUIHost v-if="activePluginUI" :plugin="activePluginUI" @close="activePluginUI = null" />
   <UpdateDialog v-if="showUpdateDialog" @close="showUpdateDialog = false" />
+  <AboutDialog v-if="showAboutDialog" @close="showAboutDialog = false" />
 </template>
 
 <style scoped>
