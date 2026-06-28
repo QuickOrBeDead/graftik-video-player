@@ -22,6 +22,7 @@ const installing = ref(false)
 const success = ref(false)
 const error = ref('')
 const cleanups: (() => void)[] = []
+const includePrerelease = ref(false)
 
 onMounted(async () => {
   const modal = new Modal(modalRef.value!)
@@ -38,6 +39,11 @@ onMounted(async () => {
   }))
 
   currentVersion.value = await (window as any).go.main.App.GetAppVersion() as string
+
+  const prefs = await (window as any).go.internal.PlayerService.GetPreferences()
+  if (prefs) {
+    includePrerelease.value = !!prefs.includePrereleasesForUpdates
+  }
 
   await checkForUpdates()
 })
@@ -97,6 +103,13 @@ async function installUpdate() {
   }
 }
 
+async function onTogglePrerelease() {
+  await (window as any).go.internal.PlayerService.SavePreferences({ includePrereleasesForUpdates: includePrerelease.value })
+  updateInfo.value = null
+  error.value = ''
+  await checkForUpdates()
+}
+
 function formatReleaseNotes(notes: string): string {
   return notes
 }
@@ -118,6 +131,11 @@ function formatReleaseNotes(notes: string): string {
             <span v-if="updateInfo" class="ms-3">
               Latest version: <span class="text-success">{{ updateInfo.latestVersion }}</span>
             </span>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="includePrerelease" v-model="includePrerelease" @change="onTogglePrerelease">
+            <label class="form-check-label text-white small" for="includePrerelease">Include prerelease versions</label>
           </div>
 
           <div v-if="updateInfo && updateInfo.hasUpdate">

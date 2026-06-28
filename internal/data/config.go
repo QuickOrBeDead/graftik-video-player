@@ -17,8 +17,9 @@ type AppConfig struct {
 	SidebarWidth    int     `json:"sidebarWidth"`
 	WindowWidth     int     `json:"windowWidth"`
 	WindowHeight    int     `json:"windowHeight"`
-	IsPlaying       bool    `json:"isPlaying"`
-	LastPlayedItem  string  `json:"lastPlayedItem"`
+	IsPlaying                    bool   `json:"isPlaying"`
+	LastPlayedItem               string `json:"lastPlayedItem"`
+	IncludePrereleasesForUpdates bool   `json:"includePrereleasesForUpdates"`
 }
 
 type ConfigStore struct {
@@ -75,17 +76,18 @@ func (c *ConfigStore) SetCurrentPlaylist(id string) error {
 
 func (c *ConfigStore) GetPreferences() *AppConfig {
 	return &AppConfig{
-		CurrentPlaylist: c.config.CurrentPlaylist,
-		Shuffle:         c.config.Shuffle,
-		RepeatMode:      c.config.RepeatMode,
-		VolumeLevel:     c.config.VolumeLevel,
-		PlaybackRate:    c.config.PlaybackRate,
-		SidebarVisible:  c.config.SidebarVisible,
-		SidebarWidth:    c.config.SidebarWidth,
-		WindowWidth:     c.config.WindowWidth,
-		WindowHeight:    c.config.WindowHeight,
-		IsPlaying:       c.config.IsPlaying,
-		LastPlayedItem:  c.config.LastPlayedItem,
+		CurrentPlaylist:              c.config.CurrentPlaylist,
+		Shuffle:                      c.config.Shuffle,
+		RepeatMode:                   c.config.RepeatMode,
+		VolumeLevel:                  c.config.VolumeLevel,
+		PlaybackRate:                 c.config.PlaybackRate,
+		SidebarVisible:               c.config.SidebarVisible,
+		SidebarWidth:                 c.config.SidebarWidth,
+		WindowWidth:                  c.config.WindowWidth,
+		WindowHeight:                 c.config.WindowHeight,
+		IsPlaying:                    c.config.IsPlaying,
+		LastPlayedItem:               c.config.LastPlayedItem,
+		IncludePrereleasesForUpdates: c.config.IncludePrereleasesForUpdates,
 	}
 }
 
@@ -119,6 +121,9 @@ func (c *ConfigStore) UpdateSettings(settings map[string]any) error {
 	}
 	if v, ok := settings["lastPlayedItem"]; ok {
 		c.config.LastPlayedItem = v.(string)
+	}
+	if v, ok := settings["includePrereleasesForUpdates"]; ok {
+		c.config.IncludePrereleasesForUpdates = v.(bool)
 	}
 	return c.Save()
 }

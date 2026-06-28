@@ -12,6 +12,7 @@ export namespace data {
 	    windowHeight: number;
 	    isPlaying: boolean;
 	    lastPlayedItem: string;
+	    includePrereleasesForUpdates: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -30,6 +31,7 @@ export namespace data {
 	        this.windowHeight = source["windowHeight"];
 	        this.isPlaying = source["isPlaying"];
 	        this.lastPlayedItem = source["lastPlayedItem"];
+	        this.includePrereleasesForUpdates = source["includePrereleasesForUpdates"];
 	    }
 	}
 	export class PlayerDataStore {
