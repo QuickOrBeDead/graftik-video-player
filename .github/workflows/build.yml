@@ -124,7 +124,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest'
         run: |
           PRERELEASE=""
-          if [[ "${{ github.ref_name }}" == *-beta* ]]; then
+          if [[ "${{ github.ref_name }}" == *-beta* || "${{ github.ref_name }}" == *-alpha* ]]; then
             PRERELEASE="--prerelease"
           fi
           gh release create "${{ github.ref_name }}" $PRERELEASE \
