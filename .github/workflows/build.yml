@@ -120,30 +120,56 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.value }}
 
-      - name: Create GitHub Release (Linux)
-        if: startsWith(github.ref, 'refs/tags/v') && matrix.os == 'ubuntu-latest'
-        run: |
-          PRERELEASE=""
-          if [[ "${{ github.ref_name }}" == *-beta* || "${{ github.ref_name }}" == *-alpha* ]]; then
-            PRERELEASE="--prerelease"
-          fi
-          gh release create "${{ github.ref_name }}" $PRERELEASE \
-            --title "${{ github.ref_name }}" \
-            --notes "See the commits for details." \
-            build/bin/*.deb
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Upload Windows installer to release
-        if: startsWith(github.ref, 'refs/tags/v') && matrix.os == 'windows-latest'
-        run: |
-          gh release upload "${{ github.ref_name }}" build/bin/*-installer.exe --clobber
-        env:
-          GH_TOKEN: ${{ github.token }}
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: graftik-video-player-${{ matrix.os }}
           path: build/bin/**
           if-no-files-found: warn
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: graftik-video-player-*
+          merge-multiple: true
+          path: build/bin
+
+      - name: Determine tag
+        id: tag
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            echo "name=$TAG" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        if: steps.tag.outputs.name != ''
+        run: |
+          PRERELEASE=""
+          if [[ "${{ steps.tag.outputs.name }}" == *-beta* || "${{ steps.tag.outputs.name }}" == *-alpha* ]]; then
+            PRERELEASE="--prerelease"
+          fi
+          gh release create "${{ steps.tag.outputs.name }}" $PRERELEASE \
+            --title "${{ steps.tag.outputs.name }}" \
+            --notes "See the commits for details." \
+            build/bin/*.deb
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Upload Windows installer to release
+        if: steps.tag.outputs.name != ''
+        run: gh release upload "${{ steps.tag.outputs.name }}" build/bin/*-installer.exe --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
