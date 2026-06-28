@@ -18,8 +18,10 @@ jobs:
         include:
           - os: windows-latest
             platform: windows/amd64
+            nsis: -nsis
           - os: ubuntu-latest
             platform: linux/amd64
+            nsis: ''
 
     runs-on: ${{ matrix.os }}
 
@@ -103,7 +105,7 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
       - name: Build
-        run: wails build -platform ${{ matrix.platform }} -clean -tags webkit2_41 -ldflags "-X main.appVersion=${{ steps.version.outputs.value }}" ${{ matrix.os == 'windows-latest' && '-nsis' || '' }}
+        run: wails build -platform ${{ matrix.platform }} -clean -tags webkit2_41 -ldflags "-X main.appVersion=${{ steps.version.outputs.value }}" ${{ matrix.nsis }}
         env:
           CGO_ENABLED: 1
 
