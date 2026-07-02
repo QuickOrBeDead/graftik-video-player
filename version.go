@@ -186,6 +186,10 @@ func (a *App) releaseToUpdateInfo(release *githubRelease) (*UpdateInfo, error) {
 }
 
 func (a *App) releaseToUpdateInfoOrNil(release *githubRelease) *UpdateInfo {
+	if appVersion == "0.0.0" {
+		return nil
+	}
+
 	latestVersion := strings.TrimPrefix(release.TagName, "v")
 
 	cmp := semverCompare(latestVersion, appVersion)

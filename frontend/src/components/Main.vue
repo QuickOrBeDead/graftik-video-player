@@ -140,16 +140,14 @@ function onOpenPlugin(plugin: PluginInfo, action: string) {
 </script>
 
 <template>
-  <div class="position-relative d-flex">
-    <video-player :playlist="playlist"></video-player>
-    <div
-      v-if="updateAvailable"
-      class="update-badge"
-      @click="showUpdateDialog = true"
-      title="Update available"
-    >
-      <i class="bi bi-arrow-up-circle-fill"></i>
-    </div>
+  <video-player :playlist="playlist"></video-player>
+  <div
+    v-if="updateAvailable"
+    class="update-badge"
+    @click="showUpdateDialog = true"
+    title="Update available"
+  >
+    <i class="bi bi-arrow-up-circle-fill"></i>
   </div>
   <PlaylistsModal v-if="showPlaylistsModal" @close="showPlaylistsModal = false" />
   <NewPlaylistModal v-if="showNewPlaylistModal" @close="showNewPlaylistModal = false" />

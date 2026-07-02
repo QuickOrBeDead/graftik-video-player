@@ -42,6 +42,9 @@ let isChangingSource = false
 
 const nativeExts = ['.webm', '.ogg', '.ogv', '.mp4', '.mov', '.m4v', '.3gp', '.3g2']
 
+const supportsPiP = typeof HTMLVideoElement !== 'undefined' &&
+  typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
+
 const footerInfo = computed(() => {
   const item = getCurrentPlaylistItem()
   if (!item) return null
@@ -152,15 +155,15 @@ watch(() => playerState.isPlaying, async (newPlaying, oldPlaying) => {
 })
 
 watch(() => playerState.pictureInPicture, async (newPictureInPicture: boolean) => {
-    if (!newPictureInPicture) {
-        return
-    }
+  if (!newPictureInPicture || !supportsPiP) {
+    return
+  }
 
-    if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture()
-    } else if (videoPlayerElement.value) {
-        await videoPlayerElement.value.requestPictureInPicture()
-    }
+  if (document.pictureInPictureElement) {
+    await document.exitPictureInPicture()
+  } else if (videoPlayerElement.value) {
+    await videoPlayerElement.value.requestPictureInPicture()
+  }
 })
 
 watch(() => playerState.fullScreen, () => {
@@ -421,7 +424,7 @@ const playNextVideo = async () => {
                     </select>
 
                     <!-- Picture in Picture -->
-                    <button class="btn btn-icon border-0 bg-transparent" @click="togglePictureInPicture" data-bs-toggle="tooltip" title="Picture in Picture (p)">
+                    <button v-if="supportsPiP" class="btn btn-icon border-0 bg-transparent" @click="togglePictureInPicture" data-bs-toggle="tooltip" title="Picture in Picture (p)">
                         <i class="bi bi-pip fs-5"></i>
                     </button>
 
