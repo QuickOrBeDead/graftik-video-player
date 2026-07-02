@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { Modal } from 'bootstrap'
 import { BrowserOpenURL } from '@wailsjs/runtime/runtime'
 
@@ -46,7 +46,7 @@ function openLink(url: string) {
             <div class="min-width-0">
               <div class="d-flex align-items-baseline gap-2 flex-wrap">
                 <span class="text-white fw-semibold" style="font-size: 1rem;">Graftik Video Player</span>
-                <span class="text-secondary" style="font-size: 0.8rem;">v{{ appVersion }}</span>
+                <span class="text-secondary" style="font-size: 0.8rem;">{{ appVersion }}</span>
               </div>
               <p class="d-flex flex-wrap gap-3 small mb-0" style="font-size: 0.8rem;">
                 <a href="#" class="text-info text-decoration-none" @click.prevent="openLink(GITHUB_URL)">
