@@ -4,6 +4,7 @@ import { usePlayer, setVideoPort } from './composables/usePlayer'
 import { usePlaylist } from './composables/usePlaylist'
 import { RepeatMode } from './types'
 import Hls from 'hls.js'
+import Mousetrap from 'mousetrap'
 
 const {
     playerState,
@@ -40,6 +41,8 @@ const videoPlayerElement = ref<HTMLVideoElement | null>(null)
 let hlsInstance: Hls | null = null
 let isChangingSource = false
 
+const RATES = [0.5, 1, 1.25, 1.5, 2]
+
 const nativeExts = ['.webm', '.ogg', '.ogv', '.mp4', '.mov', '.m4v', '.3gp', '.3g2']
 
 const supportsPiP = typeof HTMLVideoElement !== 'undefined' &&
@@ -71,9 +74,25 @@ onMounted(async () => {
     calculateVideoHeight()
     const port = await window.go.main.App.GetVideoServerPort()
     setVideoPort(port)
+
+    const handler = (fn: () => void) => (e: KeyboardEvent) => { e.preventDefault(); fn() }
+    Mousetrap.bind('space', handler(togglePlay))
+    Mousetrap.bind('left', handler(() => skipTime(-10)))
+    Mousetrap.bind('right', handler(() => skipTime(10)))
+    Mousetrap.bind('p', handler(playPreviousVideo))
+    Mousetrap.bind('n', handler(playNextVideo))
+    Mousetrap.bind('m', handler(toggleMute))
+    Mousetrap.bind('s', handler(toggleShuffle))
+    Mousetrap.bind('r', handler(toggleRepeatMode))
+    Mousetrap.bind('i', handler(togglePictureInPicture))
+    Mousetrap.bind('t', handler(toggleSidebarVisible))
+    Mousetrap.bind('f', handler(toggleFullScreen))
+    Mousetrap.bind('+', handler(speedUp))
+    Mousetrap.bind('-', handler(speedDown))
 })
 
 onUnmounted(() => {
+    Mousetrap.reset()
     destroyHls()
     if (playerState.streamId) {
         stopHlsStream(playerState.streamId)
@@ -302,6 +321,16 @@ const playNextVideo = async () => {
       setPlaylistCurrentItem(nextItem.id)
     }
 }
+
+function speedUp() {
+    const idx = RATES.indexOf(playerState.playbackRate)
+    if (idx < RATES.length - 1) setPlaybackRate(RATES[idx + 1])
+}
+
+function speedDown() {
+    const idx = RATES.indexOf(playerState.playbackRate)
+    if (idx > 0) setPlaybackRate(RATES[idx - 1])
+}
 </script>
 
 <template>
@@ -379,7 +408,7 @@ const playNextVideo = async () => {
                         <i class="bi bi-arrow-clockwise fs-4"></i>
                     </button>
 
-                    <button class="btn btn-icon border-0 bg-transparent" @click="playPreviousVideo" data-bs-toggle="tooltip" title="Previous (n)">
+                    <button class="btn btn-icon border-0 bg-transparent" @click="playPreviousVideo" data-bs-toggle="tooltip" title="Previous (p)">
                         <i class="bi bi-skip-start-fill fs-4"></i>
                     </button>
 
@@ -419,17 +448,17 @@ const playNextVideo = async () => {
                     </button>
 
                     <!-- Playback Speed -->
-                    <select :value="playerState.playbackRate" @change="(e: Event) => setPlaybackRate(parseFloat((e.target as HTMLSelectElement).value))" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: auto;" data-bs-toggle="tooltip" title="Playback Speed">
+                    <select :value="playerState.playbackRate" @change="(e: Event) => setPlaybackRate(parseFloat((e.target as HTMLSelectElement).value))" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: auto;" data-bs-toggle="tooltip" title="Playback Speed (+/-)">
                         <option v-for="rate in [0.5, 1, 1.25, 1.5, 2]" :key="rate" :value="rate">{{rate}}x</option>
                     </select>
 
                     <!-- Picture in Picture -->
-                    <button v-if="supportsPiP" class="btn btn-icon border-0 bg-transparent" @click="togglePictureInPicture" data-bs-toggle="tooltip" title="Picture in Picture (p)">
+                    <button v-if="supportsPiP" class="btn btn-icon border-0 bg-transparent" @click="togglePictureInPicture" data-bs-toggle="tooltip" title="Picture in Picture (i)">
                         <i class="bi bi-pip fs-5"></i>
                     </button>
 
                     <!-- Toggle Playlist -->
-                    <button class="btn btn-icon border-0 bg-transparent" @click="toggleSidebarVisible" data-bs-toggle="tooltip" title="Toggle Playlist">
+                    <button class="btn btn-icon border-0 bg-transparent" @click="toggleSidebarVisible" data-bs-toggle="tooltip" title="Toggle Playlist (t)">
                         <i :class="playerState.sidebarVisible ? 'bi bi-layout-sidebar-reverse fs-5' : 'bi bi-layout-sidebar fs-5'"></i>
                     </button>
 
