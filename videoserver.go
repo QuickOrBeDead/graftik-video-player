@@ -5,18 +5,27 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+
+	graftikLogger "graftik-wails/internal/logger"
 )
 
 type VideoServer struct {
 	mux      *http.ServeMux
 	listener net.Listener
 	port     int
+	log      *graftikLogger.Logger
+}
+
+func (vs *VideoServer) SetLogger(log *graftikLogger.Logger) {
+	vs.log = log
 }
 
 func NewVideoServer() (*VideoServer, error) {
-	mux := http.NewServeMux()
+	vs := &VideoServer{}
 
-	mux.HandleFunc("/api/video", func(w http.ResponseWriter, r *http.Request) {
+	vs.mux = http.NewServeMux()
+
+	vs.mux.HandleFunc("/api/video", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
@@ -26,16 +35,28 @@ func NewVideoServer() (*VideoServer, error) {
 		}
 
 		videoPath := r.URL.Query().Get("path")
+		if vs.log != nil {
+			vs.log.Debug("VideoServer /api/video: video request", "method", r.Method, "path", videoPath, "remote", r.RemoteAddr)
+		}
 		if videoPath == "" || !filepath.IsAbs(videoPath) {
+			if vs.log != nil {
+				vs.log.Debug("VideoServer /api/video: invalid video path", "path", videoPath)
+			}
 			http.Error(w, "Invalid path", http.StatusBadRequest)
 			return
 		}
 
 		if _, err := os.Stat(videoPath); os.IsNotExist(err) {
+			if vs.log != nil {
+				vs.log.Debug("VideoServer /api/video: video file not found", "path", videoPath)
+			}
 			http.Error(w, "Not found", http.StatusNotFound)
 			return
 		}
 
+		if vs.log != nil {
+			vs.log.Debug("VideoServer /api/video: serving video file", "path", videoPath)
+		}
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Accept-Ranges", "bytes")
 		http.ServeFile(w, r, videoPath)
@@ -46,10 +67,11 @@ func NewVideoServer() (*VideoServer, error) {
 		return nil, err
 	}
 
-	port := listener.Addr().(*net.TCPAddr).Port
-	go http.Serve(listener, mux)
+	vs.port = listener.Addr().(*net.TCPAddr).Port
+	vs.listener = listener
+	go http.Serve(listener, vs.mux)
 
-	return &VideoServer{mux: mux, listener: listener, port: port}, nil
+	return vs, nil
 }
 
 func (vs *VideoServer) Port() int {
@@ -57,5 +79,8 @@ func (vs *VideoServer) Port() int {
 }
 
 func (vs *VideoServer) RegisterHLS(hlsDir string) {
+	if vs.log != nil {
+		vs.log.Debug("VideoServer: hls http handler is registered to /hls/", "hlsDir", hlsDir)
+	}
 	vs.mux.Handle("/hls/", http.StripPrefix("/hls/", http.FileServer(http.Dir(hlsDir))))
 }

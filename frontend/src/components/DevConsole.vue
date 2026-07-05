@@ -1,22 +1,33 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { logger, type LogLevel, type LogEntry } from '@renderer/utils/logger'
+import { ref, computed, onMounted, onUnmounted, nextTick, shallowRef, watch, reactive } from 'vue'
+import { LogEntry, logger, type LogLevel } from '@renderer/utils/logger'
 
 const emit = defineEmits<{ close: [] }>()
 
-const filterLevel = ref<LogLevel | 'all'>('all')
+const allLevels: LogLevel[] = ['trace', 'debug', 'info', 'warn', 'error']
+const selectedLevels = reactive<Record<LogLevel, boolean>>({
+  trace: true,
+  debug: true,
+  info: true,
+  warn: true,
+  error: true,
+})
+const filterOpen = ref(false)
+
+const allSelected = computed(() => allLevels.every(l => selectedLevels[l]))
+const filterSummary = computed(() => {
+  if (allSelected.value) return 'all'
+  const count = allLevels.filter(l => selectedLevels[l]).length
+  return count === 0 ? 'none' : `${count}/5`
+})
 const visible = ref(true)
 const autoScroll = ref(true)
 const containerRef = ref<HTMLDivElement>()
-const expandedAttrs = ref(new Set<number>())
 
-function toggleAttrs(id: number) {
-  const s = expandedAttrs.value
-  if (s.has(id)) s.delete(id)
-  else s.add(id)
-  expandedAttrs.value = new Set(s)
-}
+const entriesRaw = shallowRef<Array<LogEntry>>([]);
+const maxBuffer = ref(logger.maxBuffer)
 
+watch(maxBuffer, v => { logger.maxBuffer = v })
 function formatTime(d: Date): string {
   const hh = String(d.getHours()).padStart(2, '0')
   const mm = String(d.getMinutes()).padStart(2, '0')
@@ -34,16 +45,10 @@ function formatAttrValue(v: unknown): string {
 }
 
 const entries = computed(() => {
-  const all = logger.getBuffer()
-  if (filterLevel.value === 'all') return all
-  return all.filter(e => e.level === filterLevel.value || shouldInclude(e.level))
+  const all = entriesRaw.value
+  if (allSelected.value) return all
+  return all.filter(e => selectedLevels[e.level])
 })
-
-function shouldInclude(level: LogLevel): boolean {
-  if (filterLevel.value === 'all') return true
-  const priorities: Record<string, number> = { trace: 0, debug: 1, info: 2, warn: 3, error: 4 }
-  return priorities[level] >= priorities[filterLevel.value]
-}
 
 function levelBadgeClass(level: LogLevel): string {
   switch (level) {
@@ -65,21 +70,35 @@ function levelIcon(level: LogLevel): string {
   }
 }
 
-let unsub: () => void
+let unsubscribeFunc: () => void
 
 onMounted(() => {
-  unsub = logger.subscribe(() => {
-    if (autoScroll.value && containerRef.value) {
-      nextTick(() => {
-        containerRef.value!.scrollTop = containerRef.value!.scrollHeight
-      })
-    }
+  unsubscribeFunc = logger.subscribe(() => {
+    loadEntries()
+    scrollDown()
   })
+
+  loadEntries()
+  scrollDown()
+  document.addEventListener('click', onDocClick)
 })
 
 onUnmounted(() => {
-  if (unsub) unsub()
+  if (unsubscribeFunc) unsubscribeFunc()
+  document.removeEventListener('click', onDocClick)
 })
+
+function onDocClick() {
+  filterOpen.value = false
+}
+
+function scrollDown() {
+  if (autoScroll.value && containerRef.value) {
+    nextTick(() => {
+      containerRef.value!.scrollTop = containerRef.value!.scrollHeight
+    })
+  }
+}
 
 function onCopyAll() {
   const text = logger.getBuffer()
@@ -98,18 +117,20 @@ function onCopyAll() {
 
 function onClear() {
   logger.clear()
+  loadEntries()
 }
 
-function onFilterChange() {
-  const next: Record<string, LogLevel | 'all'> = {
-    all: 'error',
-    error: 'warn',
-    warn: 'info',
-    info: 'debug',
-    debug: 'trace',
-    trace: 'all',
-  }
-  filterLevel.value = next[filterLevel.value] || 'all'
+function loadEntries() {
+  entriesRaw.value = [...logger.getBuffer()]
+}
+
+function toggleAll() {
+  const next = !allSelected.value
+  for (const l of allLevels) selectedLevels[l] = next
+}
+
+function toggleLevel(level: LogLevel) {
+  selectedLevels[level] = !selectedLevels[level]
 }
 </script>
 
@@ -120,17 +141,34 @@ function onFilterChange() {
         <i class="bi bi-terminal-fill"></i>
         <span class="fw-semibold small">Dev Console</span>
         <span class="badge bg-secondary">{{ entries.length }} entries</span>
+        <div class="vr mx-1 opacity-25"></div>
+        <label class="d-flex align-items-center gap-1 buffer-label" title="Max buffer entries">
+          <i class="bi bi-database"></i>
+          Buffer Size:
+          <input type="number" v-model.number="maxBuffer" class="buffer-input" min="1" />
+        </label>
       </div>
-      <div class="d-flex align-items-center gap-1">
+      <div class="d-flex align-items-center gap-1 position-relative">
         <button
           class="btn btn-sm border-0 text-white-50"
-          :class="{ 'text-white': filterLevel !== 'all' }"
-          @click="onFilterChange"
-          :title="'Filter: ' + filterLevel"
+          :class="{ 'text-white': !allSelected }"
+          @click="filterOpen = !filterOpen"
+          title="Filter levels"
         >
           <i class="bi bi-funnel"></i>
-          <span class="ms-1 small">{{ filterLevel }}</span>
+          <span class="ms-1 small">{{ filterSummary }}</span>
         </button>
+        <div v-if="filterOpen" class="filter-panel" @click.stop>
+          <label class="filter-item">
+            <input type="checkbox" :checked="allSelected" @change="toggleAll" />
+            <span>All</span>
+          </label>
+          <label v-for="level in allLevels" :key="level" class="filter-item">
+            <input type="checkbox" :checked="selectedLevels[level]" @change="toggleLevel(level)" />
+            <i :class="levelIcon(level)" class="me-1"></i>
+            {{ level }}
+          </label>
+        </div>
         <button class="btn btn-sm border-0 text-white-50" @click="onCopyAll" title="Copy all">
           <i class="bi bi-clipboard"></i>
         </button>
@@ -145,7 +183,7 @@ function onFilterChange() {
         </button>
       </div>
     </div>
-    <div ref="containerRef" class="dev-console-body" @scroll="autoScroll = false">
+    <div ref="containerRef" class="dev-console-body">
       <div v-for="entry in entries" :key="entry.id" class="dev-console-entry-row" :class="'entry-' + entry.level">
         <div class="dev-console-entry">
           <span class="entry-time">{{ formatTime(entry.time) }}</span>
@@ -156,22 +194,13 @@ function onFilterChange() {
           <span v-if="entry.fromBackend" class="entry-source-badge">BACKEND</span>
           <span v-else class="entry-source-badge">FRONTEND</span>
           <span class="entry-message">{{ entry.message }}</span>
+          <template v-if="entry.attrs">
+            <span v-for="(val, key) in entry.attrs" :key="key" class="entry-inline-attr">
+              <span class="entry-inline-key">{{ key }}:</span>
+              <span class="entry-inline-val">{{ formatAttrValue(val) }}</span>
+            </span>
+          </template>
           <span v-if="entry.source" class="entry-source text-white-50">({{ entry.source }})</span>
-          <button
-            v-if="entry.attrs && Object.keys(entry.attrs).length > 0"
-            class="entry-attrs-toggle"
-            @click="toggleAttrs(entry.id)"
-            :title="expandedAttrs.has(entry.id) ? 'Hide attrs' : 'Show attrs'"
-          >
-            <i :class="expandedAttrs.has(entry.id) ? 'bi bi-chevron-down' : 'bi bi-chevron-right'"></i>
-            <span class="attrs-count">{{ Object.keys(entry.attrs).length }}</span>
-          </button>
-        </div>
-        <div v-if="entry.attrs && expandedAttrs.has(entry.id)" class="entry-attrs">
-          <div v-for="(val, key) in entry.attrs" :key="key" class="entry-attr">
-            <span class="attr-key">{{ key }}:</span>
-            <span class="attr-val">{{ formatAttrValue(val) }}</span>
-          </div>
         </div>
       </div>
     </div>
@@ -234,60 +263,6 @@ function onFilterChange() {
   line-height: 1.5;
 }
 
-.entry-attrs-toggle {
-  background: none;
-  border: none;
-  color: #888;
-  cursor: pointer;
-  padding: 0 4px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.7rem;
-  flex-shrink: 0;
-}
-
-.entry-attrs-toggle:hover {
-  color: #fff;
-}
-
-.attrs-count {
-  font-size: 0.6rem;
-  background: #444;
-  color: #bbb;
-  border-radius: 8px;
-  padding: 0 5px;
-  line-height: 1.4;
-}
-
-.entry-attrs {
-  padding: 2px 12px 4px 112px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.entry-attr {
-  display: flex;
-  gap: 6px;
-  font-size: 0.7rem;
-  line-height: 1.5;
-}
-
-.attr-key {
-  color: #6ea8fe;
-  flex-shrink: 0;
-  min-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.attr-val {
-  color: #aaa;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .entry-time {
   color: #666;
   flex-shrink: 0;
@@ -315,16 +290,35 @@ function onFilterChange() {
 
 .entry-message {
   color: #ddd;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .entry-trace .entry-message { color: #666; }
 .entry-debug .entry-message { color: #999; }
 .entry-warn .entry-message { color: #ffc107; }
 .entry-error .entry-message { color: #ff6b6b; }
+
+.entry-inline-attr {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 3px;
+  padding: 0 5px;
+  font-size: 0.65rem;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.entry-inline-key {
+  color: #6ea8fe;
+}
+
+.entry-inline-val {
+  color: #aaa;
+}
 
 .dev-console-footer {
   padding: 4px 12px;
@@ -335,6 +329,67 @@ function onFilterChange() {
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+.buffer-label {
+  color: #888;
+  font-size: 0.7rem;
+}
+
+.buffer-input {
+  width: 60px;
+  height: 20px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #ccc;
+  font-size: 0.7rem;
+  font-family: inherit;
+  padding: 0 4px;
+  outline: none;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.buffer-input:focus {
+  border-color: #6ea8fe;
+  background: #333;
+}
+
+.filter-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 4px 0;
+  min-width: 120px;
+  margin-top: 2px;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.filter-item:hover {
+  background: #333;
+  color: #fff;
+}
+
+.filter-item input[type="checkbox"] {
+  width: 11px;
+  height: 11px;
+  accent-color: #6ea8fe;
+  margin: 0;
 }
 
 .form-check-input {

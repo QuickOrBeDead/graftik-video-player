@@ -127,7 +127,11 @@ func (a *App) startup(ctx context.Context) {
 	// Start dedicated video file server with mux
 	a.videoServer, err = NewVideoServer()
 	if err != nil {
-		a.log.Error("failed to start video server", "error", err)
+		a.log.Error("App startup: failed to start video server", "error", err)
+	}
+	if a.videoServer != nil {
+		a.videoServer.SetLogger(a.log)
+		a.log.Debug("App startup: video server started", "port", a.videoServer.Port())
 	}
 
 	ext := ""
@@ -140,7 +144,7 @@ func (a *App) startup(ctx context.Context) {
 	ffmpegPath := filepath.Join(a.ffmpegDir, "ffmpeg"+ext)
 	ffprobePath := filepath.Join(a.ffmpegDir, "ffprobe"+ext)
 
-	a.log.Debug("ffmpeg paths", "ffmpeg", ffmpegPath, "ffprobe", ffprobePath)
+	a.log.Debug("App startup: ffmpeg paths", "ffmpeg", ffmpegPath, "ffprobe", ffprobePath)
 
 	// Init HLS engine
 	hlsDir := filepath.Join(os.TempDir(), "graftik-hls")
@@ -253,42 +257,67 @@ func (a *App) GetVideoServerPort() int {
 }
 
 func (a *App) GetStreamURL(playlistItemID string) *data.StreamURLResult {
+	if a.log != nil {
+		a.log.Debug("GetStreamURL starting", "playlistItemID", playlistItemID)
+	}
+
 	if a.store == nil || a.hlsEngine == nil {
+		if a.log != nil {
+			a.log.Debug("GetStreamURL: store or hlsEngine nil")
+		}
 		return nil
 	}
 
 	item := a.store.GetPlaylistItem(playlistItemID)
 	if item == nil {
+		if a.log != nil {
+			a.log.Debug("GetStreamURL: playlist item not found", "playlistItemID", playlistItemID)
+		}
 		return nil
+	}
+
+	if a.log != nil {
+		a.log.Debug("GetStreamURL: playlist item found", "id", item.ID, "path", item.Path, "title", item.Title)
 	}
 
 	// Stop previous HLS stream if any
 	if a.currentStreamID != "" {
+		if a.log != nil {
+			a.log.Debug("GetStreamURL: stopping previous stream", "streamID", a.currentStreamID)
+		}
 		a.hlsEngine.StopStream(a.currentStreamID)
 		a.currentStreamID = ""
 	}
 
 	// For native extensions - skip probe and go directly
 	if media.IsNativeExtension(item.Path) {
-		return &data.StreamURLResult{
-			URL: fmt.Sprintf("http://127.0.0.1:%d/api/video?path=%s",
-				a.videoServer.Port(), url.QueryEscape(item.Path)),
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/video?path=%s",
+			a.videoServer.Port(), url.QueryEscape(item.Path))
+		if a.log != nil {
+			a.log.Debug("GetStreamURL: native extension, serving directly", "url", url)
 		}
+		return &data.StreamURLResult{URL: url}
 	}
 
 	// Probe to determine remux vs transcode
 	info, err := media.Probe(a.Service.FFprobePath(), item.Path)
 	if err != nil {
-		a.log.Error("probe failed", "path", item.Path, "error", err)
+		a.log.Error("GetStreamURL: media probe failed", "path", item.Path, "error", err)
 		return nil
+	}
+
+	if a.log != nil {
+		a.log.Debug("GetStreamURL: probe result", "path", item.Path, "action", info.Action, "actionLabel", info.ActionLabel)
 	}
 
 	// If natively playable, serve directly
 	if info.Action == "native" {
-		return &data.StreamURLResult{
-			URL: fmt.Sprintf("http://127.0.0.1:%d/api/video?path=%s",
-				a.videoServer.Port(), url.QueryEscape(item.Path)),
+		url := fmt.Sprintf("http://127.0.0.1:%d/api/video?path=%s",
+			a.videoServer.Port(), url.QueryEscape(item.Path))
+		if a.log != nil {
+			a.log.Debug("GetStreamURL: native playable, serving directly", "url", url)
 		}
+		return &data.StreamURLResult{URL: url}
 	}
 
 	// Detect HW encoder for transcodes
@@ -298,17 +327,26 @@ func (a *App) GetStreamURL(playlistItemID string) *data.StreamURLResult {
 			info.Action = "hw_transcode"
 			info.HWEncoder = hwEncoderShortLabel(hw)
 			info.ActionLabel = fmt.Sprintf("HW Transcode (%s)", info.HWEncoder)
+			if a.log != nil {
+				a.log.Debug("GetStreamURL: hw encoder detected", "encoder", hw)
+			}
+		} else if a.log != nil {
+			a.log.Debug("GetStreamURL: no hw encoder, using sw transcode")
 		}
 	}
 
 	// Start HLS stream
 	streamID, err := a.hlsEngine.StartStream(item.Path, info)
 	if err != nil {
-		a.log.Error("hls stream start failed", "path", item.Path, "error", err)
+		a.log.Error("GetStreamURL: hls stream start failed", "path", item.Path, "error", err)
 		return nil
 	}
 
 	a.currentStreamID = streamID
+
+	if a.log != nil {
+		a.log.Debug("GetStreamURL: hls stream started", "streamID", streamID)
+	}
 
 	return &data.StreamURLResult{
 		URL:      fmt.Sprintf("http://127.0.0.1:%d/hls/%s/stream.m3u8", a.videoServer.Port(), streamID),

@@ -155,19 +155,36 @@ func (s *PlayerService) GetPlaylistName(id string) string {
 }
 
 func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID, videoPath string) *data.VideoMetadata {
+	if s.log != nil {
+		s.log.Debug("GetPlaylistItemVideoMetadata started", "playlistID", playlistID, "playlistItemID", playlistItemID, "videoPath", videoPath)
+	}
+
 	stats, err := os.Stat(videoPath)
 	if err != nil {
+		if s.log != nil {
+			s.log.Debug("GetPlaylistItemVideoMetadata: file stat failed", "path", videoPath, "error", err)
+		}
 		return nil
 	}
 	lastModified := float64(stats.ModTime().UnixMilli())
 	fileSize := float64(stats.Size())
+
+	if s.log != nil {
+		s.log.Debug("GetPlaylistItemVideoMetadata: file stat", "path", videoPath, "size", fileSize, "lastModified", lastModified)
+	}
 
 	fileHash := s.thumbnailStore.CalculateFileHash(videoPath, stats.Size(), stats.ModTime().UnixMilli())
 
 	// Check cache
 	thumbnail, _ := s.thumbnailStore.GetThumbnail(playlistID, playlistItemID, fileHash)
 	if thumbnail != "" {
+		if s.log != nil {
+			s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache hit", "fileHash", fileHash, "playlistItemID", playlistItemID)
+		}
 		duration := s.probeDuration(videoPath)
+		if s.log != nil {
+			s.log.Debug("GetPlaylistItemVideoMetadata: returning result", "duration", duration, "fileSize", fileSize)
+		}
 		return &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
@@ -176,13 +193,24 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 		}
 	}
 
+	if s.log != nil {
+		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache miss", "fileHash", fileHash, "playlistItemID", playlistItemID)
+	}
+
 	// Probe duration
 	duration := s.probeDuration(videoPath)
+	if s.log != nil {
+		s.log.Debug("GetPlaylistItemVideoMetadata: probed duration", "path", videoPath, "duration", duration)
+	}
 
 	// Extract thumbnail
 	seekTime := duration * 0.1
 	if seekTime <= 0 {
 		seekTime = 1.0
+	}
+
+	if s.log != nil {
+		s.log.Debug("GetPlaylistItemVideoMetadata: extracting thumbnail", "path", videoPath, "seekTime", seekTime)
 	}
 
 	tempFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%d.jpeg", playlistItemID, time.Now().UnixMilli()))
@@ -207,7 +235,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 			stderr = err.Error()
 		}
 		if s.log != nil {
-			s.log.Error("ffmpeg thumbnail extraction failed", "path", videoPath, "error", stderr)
+			s.log.Error("GetPlaylistItemVideoMetadata: ffmpeg thumbnail extraction failed", "path", videoPath, "error", stderr)
 		}
 		return &data.VideoMetadata{
 			Duration:     duration,
@@ -217,8 +245,15 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 		}
 	}
 
+	if s.log != nil {
+		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail extracted to temp file", "tempFile", tempFile)
+	}
+
 	imageData, err := os.ReadFile(tempFile)
 	if err != nil {
+		if s.log != nil {
+			s.log.Debug("GetPlaylistItemVideoMetadata: failed to read temp thumbnail", "tempFile", tempFile, "error", err)
+		}
 		return &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
@@ -228,6 +263,10 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 	}
 
 	s.thumbnailStore.SetThumbnail(playlistID, playlistItemID, fileHash, imageData)
+
+	if s.log != nil {
+		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cached and returning", "playlistItemID", playlistItemID, "imageSize", len(imageData))
+	}
 
 	return &data.VideoMetadata{
 		Duration:     duration,
@@ -260,12 +299,23 @@ func (s *PlayerService) InitNewPlaylistItems(filePaths []string) []data.Playlist
 }
 
 func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
+	if s.log != nil {
+		s.log.Debug("GetStreamInfo started", "videoPath", videoPath)
+	}
+
 	info, err := media.Probe(s.ffprobePath, videoPath)
 	if err != nil {
+		if s.log != nil {
+			s.log.Debug("GetStreamInfo: media probe failed, falling back to SW transcode", "path", videoPath, "error", err)
+		}
 		return &data.StreamInfo{
 			Action:      "sw_transcode",
 			ActionLabel: "SW Transcode",
 		}
+	}
+
+	if s.log != nil {
+		s.log.Debug("GetStreamInfo: media probe result", "path", videoPath, "action", info.Action, "actionLabel", info.ActionLabel)
 	}
 
 	if info.Action == "sw_transcode" && s.hlsEngine != nil {
@@ -274,6 +324,11 @@ func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
 			info.Action = "hw_transcode"
 			info.ActionLabel = hwEncoderShortLabel(hwEncoder)
 			info.HWEncoder = hwEncoderShortLabel(hwEncoder)
+			if s.log != nil {
+				s.log.Debug("GetStreamInfo: hw encoder detected, upgrading to HW transcode", "encoder", hwEncoder, "path", videoPath)
+			}
+		} else if s.log != nil {
+			s.log.Debug("GetStreamInfo: no hw encoder detected, keeping SW transcode", "path", videoPath)
 		}
 	}
 

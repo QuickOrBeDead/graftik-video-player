@@ -23,7 +23,9 @@ const LEVEL_PRIORITY: Record<LogLevel, number> = {
 class FrontendLogger {
   private level: LogLevel = 'debug'
   private buffer: LogEntry[] = []
-  private maxBuffer = 1000
+  private _maxBuffer = 1000
+  get maxBuffer(): number { return this._maxBuffer }
+  set maxBuffer(value: number) { this._maxBuffer = Math.max(1, value) }
   private nextId = 0
   private listeners: Set<LogCallback> = new Set()
   private prefix = '[Graftik]'
@@ -72,7 +74,9 @@ class FrontendLogger {
 
   fromBackend(entry: { level: string; message: string; time?: string; source?: string; attrs?: Record<string, unknown> }) {
     const level = (entry.level?.toLowerCase() as LogLevel) || 'info'
-    if (!this.shouldLog(level)) return
+    if (!this.shouldLog(level)) {
+      return
+    }
 
     const logEntry: LogEntry = {
       id: this.nextId++,
@@ -85,7 +89,7 @@ class FrontendLogger {
     }
 
     this.buffer.push(logEntry)
-    if (this.buffer.length > this.maxBuffer) {
+    if (this.buffer.length > this._maxBuffer) {
       this.buffer.shift()
     }
 
@@ -105,7 +109,7 @@ class FrontendLogger {
     }
 
     this.buffer.push(logEntry)
-    if (this.buffer.length > this.maxBuffer) {
+    if (this.buffer.length > this._maxBuffer) {
       this.buffer.shift()
     }
 
