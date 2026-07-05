@@ -300,11 +300,11 @@ const updatePlaylistItemOrder = async (event: { moved: { element: PlaylistItem; 
           ></button>
         </div>
         <div class="modal-body text-white">
-          Are you sure you want to delete '{{ currentPlaylistItem?.title }}' playlist item?
+          Are you sure you want to remove '{{ currentPlaylistItem?.title }}' playlist item?
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-danger" @click="deleteItem">Delete</button>
+          <button type="button" class="btn btn-danger" @click="deleteItem">Remove</button>
         </div>
       </div>
     </div>
