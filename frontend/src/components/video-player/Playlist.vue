@@ -11,8 +11,12 @@ import { usePlaylist } from './composables/usePlaylist'
 import { logger } from '@renderer/utils/logger'
 import { PlaylistItemDto } from '@renderer/data/playlist'
 
+const emit = defineEmits<{
+  beforePlaylistItemChange: []
+}>()
+
 const props = defineProps<{ playlist: Playlist | null }>()
-const { playerState, playVideo, progressPercent, calculatePercent, pause } = usePlayer()
+const { playerState, playVideo, calculatePercent, pause } = usePlayer()
 const {
   playlistState,
   filteredPlaylist,
@@ -99,6 +103,8 @@ const getStreamInfo = async (videoPath: string): Promise<StreamInfo | undefined>
 }
 
 const playItem = async (item: PlaylistItem) => {
+  emit("beforePlaylistItemChange")
+
   const restartTime = item.progressPercent !== undefined && item.progressPercent >= 100 ? 0 : (item.elapsedTime ?? 0)
   await playVideo(item.path, restartTime, item.id)
   setPlaylistCurrentItem(item.id)

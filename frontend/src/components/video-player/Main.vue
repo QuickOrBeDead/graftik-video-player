@@ -90,7 +90,7 @@ const stopResize = () => {
         :class="{ active: playerState.isSidebarResizing }"
         @mousedown="startResizing"
     ></div>
-    <PlaylistView :playlist="playlist"></PlaylistView>
+    <PlaylistView :playlist="playlist" @before-playlist-item-change="updatePlaylistItem"></PlaylistView>
 </template>
 
 <style lang="css" scoped>
