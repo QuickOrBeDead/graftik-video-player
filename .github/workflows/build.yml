@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -52,12 +52,12 @@ jobs:
           fi
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.26'
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -84,7 +84,7 @@ jobs:
       - name: Cache FFmpeg (Windows)
         if: matrix.os == 'windows-latest'
         id: cache-ffmpeg-windows
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build/windows/bin
           key: ffmpeg-windows-${{ runner.arch }}-20260628
@@ -97,7 +97,7 @@ jobs:
       - name: Cache FFmpeg (Linux)
         if: matrix.os == 'ubuntu-latest'
         id: cache-ffmpeg-linux
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build/linux/bin
           key: ffmpeg-linux-${{ runner.arch }}-20260628
@@ -144,7 +144,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.value }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: graftik-video-player-${{ matrix.os }}
           path: build/bin/**
@@ -157,11 +157,11 @@ jobs:
       contents: write
       actions: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           pattern: graftik-video-player-*
           merge-multiple: true
