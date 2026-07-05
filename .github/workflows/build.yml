@@ -54,12 +54,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -155,7 +155,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -178,30 +177,26 @@ jobs:
             echo "name=$TAG" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create GitHub Release
+      - name: Check if prerelease
+        id: prerelease
         if: steps.tag.outputs.name != ''
+        shell: bash
         run: |
-          PRERELEASE=""
-          if [[ "${{ steps.tag.outputs.name }}" == *-beta* || "${{ steps.tag.outputs.name }}" == *-alpha* ]]; then
-            PRERELEASE="--prerelease"
+          TAG="${{ steps.tag.outputs.name }}"
+          if [[ "$TAG" == *-beta* || "$TAG" == *-alpha* ]]; then
+            echo "value=true" >> $GITHUB_OUTPUT
+          else
+            echo "value=false" >> $GITHUB_OUTPUT
           fi
-          gh release create "${{ steps.tag.outputs.name }}" $PRERELEASE \
-            --title "${{ steps.tag.outputs.name }}" \
-            --notes "See the commits for details." \
-            build/bin/*.deb
-        env:
-          GH_TOKEN: ${{ github.token }}
 
-      - name: Upload Windows installer to release
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         if: steps.tag.outputs.name != ''
-        run: gh release upload "${{ steps.tag.outputs.name }}" build/bin/*-installer.exe --clobber
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Delete workflow artifacts
-        run: |
-          gh api /repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
-            --jq '.artifacts[].id' \
-            | xargs -I {} gh api -X DELETE /repos/${{ github.repository }}/actions/artifacts/{}
-        env:
-          GH_TOKEN: ${{ github.token }}
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          prerelease: ${{ steps.prerelease.outputs.value }}
+          files: |
+            build/bin/*.deb
+            build/bin/*-installer.exe
