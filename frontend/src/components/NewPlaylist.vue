@@ -5,10 +5,11 @@ import { Modal } from 'bootstrap'
 const emit = defineEmits<{ close: [] }>()
 const name = ref<string>()
 const modalRef = ref<HTMLDivElement>()
+let modal: Modal;
 
 onMounted(() => {
   if (modalRef.value) {
-    const modal = new Modal(modalRef.value)
+    modal = new Modal(modalRef.value)
     modal.show()
     modalRef.value.addEventListener('hidden.bs.modal', () => emit('close'))
   }
@@ -16,6 +17,10 @@ onMounted(() => {
 
 async function add() {
   await window.go.internal.PlayerService.AddPlaylist(name.value ?? '')
+
+  if (modal) {
+    modal.hide()
+  }
 }
 </script>
 
