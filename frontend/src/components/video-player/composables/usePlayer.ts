@@ -102,12 +102,16 @@ export function usePlayer() {
     })
 
     const progressPercent = computed(() => {
-      if (state.duration <= 0) {
+      return calculatePercent(state.currentTime, state.duration)
+    })
+
+    const calculatePercent = (currentTime: number, duration: number): number => {
+      if (duration <= 0) {
         return 0
       }
 
-      return (state.currentTime / state.duration) * 100
-    })
+      return (currentTime / duration) * 100
+    }
 
     const skipTime = (seconds: number) => {
       let newTime = state.currentTime + seconds
@@ -198,6 +202,7 @@ export function usePlayer() {
     }
 
     const playVideo = async (videoSrc: string, currentTime: number, playlistItemId?: string) => {
+      state.playlistItemId = playlistItemId
       state.currentTime = currentTime
 
       if (state.streamId) {
@@ -284,6 +289,7 @@ export function usePlayer() {
       getStreamUrl,
       stopHlsStream,
       applyPreferences,
-      setSidebarWidth
+      setSidebarWidth,
+      calculatePercent
     }
 }

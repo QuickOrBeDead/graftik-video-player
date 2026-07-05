@@ -12,7 +12,7 @@ import { logger } from '@renderer/utils/logger'
 import { PlaylistItemDto } from '@renderer/data/playlist'
 
 const props = defineProps<{ playlist: Playlist | null }>()
-const { playerState, playVideo, progressPercent, pause } = usePlayer()
+const { playerState, playVideo, progressPercent, calculatePercent, pause } = usePlayer()
 const {
   playlistState,
   filteredPlaylist,
@@ -22,9 +22,8 @@ const {
   changeViewMode,
   toggleShowOnlyUnwatched,
   getCurrentPlaylistItem,
-  updateCurrentPlaylistItemTime,
+  updatePlaylistItem,
   setPlaylistCurrentItem,
-  setCurrentPlaylistItemProgress,
   setNewPlaylistItemsOrderIndexes,
   setPlaylistItemNewOrder,
   addNewPlaylistItems,
@@ -55,13 +54,12 @@ watch(
   { immediate: true }
 )
 
-watch(progressPercent, (newProgressPercent: number) => {
-  setCurrentPlaylistItemProgress(newProgressPercent)
-})
-
-watch(() => playerState.currentTime, (newCurrentTime: number) => {
-    updateCurrentPlaylistItemTime(newCurrentTime)
-})
+watch(
+  [() => playerState.currentTime, () => playerState.playlistItemId, () => playerState.duration],
+  ([newCurrentTime, newPlaylistItemId, newDuration], []) => {
+    updatePlaylistItem(newPlaylistItemId, newCurrentTime, calculatePercent(newCurrentTime, newDuration))
+  }
+)
 
 window.runtime.EventsOn('add-playlist-item', async (items: unknown) => {
   const itemsTyped = items as PlaylistItemDto[]
@@ -292,7 +290,7 @@ const updatePlaylistItemOrder = async (event: { moved: { element: PlaylistItem; 
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 id="deleteModalLabel" class="modal-title text-white fs-6">Confirm Delete</h5>
+          <h5 id="deleteModalLabel" class="modal-title text-white fs-6">Confirm Remove</h5>
           <button
             type="button"
             class="btn-close"

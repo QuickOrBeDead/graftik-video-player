@@ -8,6 +8,7 @@ export interface PlayerState {
     playbackRate: number
     controlsVisible: boolean
     currentTime: number
+    playlistItemId?: string,
     seekTime: number
     duration: number,
     sidebarVisible: boolean,

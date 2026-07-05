@@ -57,26 +57,24 @@ export function usePlaylist() {
   })
 
   const getCurrentPlaylistItem = () => {
-    return state.items.find(x => x.id == state.currentItem)
+    return getPlaylistItem(state.currentItem)
   }
 
-  const updateCurrentPlaylistItemTime = (newCurrentTime: number | undefined) => {
-    const currentItem = getCurrentPlaylistItem()
+  const getPlaylistItem = (id: string | undefined) => {
+    return state.items.find(x => x.id == id)
+  }
+
+  const updatePlaylistItem = (id: string | undefined, newCurrentTime: number | undefined, newProgressPercent: number) => {
+    const currentItem = getPlaylistItem(id)
     if (currentItem) {
-        currentItem.elapsedTime = newCurrentTime
+      currentItem.progressPercent = newProgressPercent
+      currentItem.elapsedTime = newCurrentTime
+      currentItem.lastWatched = new Date()
     }
   }
 
   const setPlaylistCurrentItem = (id: string) => {
     state.currentItem = id
-  }
-
-  const setCurrentPlaylistItemProgress = (progress: number) => {
-    const currentItem = getCurrentPlaylistItem()
-    if (currentItem) {
-      currentItem.progressPercent = progress
-      currentItem.lastWatched = new Date()
-    }
   }
 
   const filteredPlaylist = computed(() => {
@@ -259,9 +257,8 @@ export function usePlaylist() {
     deletePlaylistItem,
     toggleShowOnlyUnwatched,
     getCurrentPlaylistItem,
-    updateCurrentPlaylistItemTime,
+    updatePlaylistItem,
     setPlaylistCurrentItem,
-    setCurrentPlaylistItemProgress,
     setNewPlaylistItemsOrderIndexes,
     setPlaylistItemNewOrder,
     addNewPlaylistItems,
