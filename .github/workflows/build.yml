@@ -155,6 +155,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -200,3 +201,11 @@ jobs:
           files: |
             build/bin/*.deb
             build/bin/*-installer.exe
+
+      - name: Delete workflow artifacts
+        run: |
+          gh api /repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+            --jq '.artifacts[].id' \
+            | xargs -I {} gh api -X DELETE /repos/${{ github.repository }}/actions/artifacts/{}
+        env:
+          GH_TOKEN: ${{ github.token }}
