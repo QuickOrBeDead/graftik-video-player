@@ -2,6 +2,10 @@ package main
 
 import (
 	"embed"
+	"os"
+	"path/filepath"
+
+	"graftik-wails/internal/logger"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -17,7 +21,18 @@ var assets embed.FS
 var appIcon []byte
 
 func main() {
-	app := NewApp()
+	logDir := ""
+	if userDataDir, err := os.UserConfigDir(); err == nil {
+		logDir = filepath.Join(userDataDir, "graftik-video-player", "logs")
+	}
+
+	log := logger.New(logger.LogConfig{
+		Level:     logger.LevelDebug,
+		LogToFile: false,
+		LogDir:    logDir,
+	})
+
+	app := NewApp(log)
 
 	err := wails.Run(&options.App{
 		Title:     "Graftik Video Player",
@@ -32,7 +47,7 @@ func main() {
 		Menu:             app.CreateAppMenu(),
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
-		Bind: []interface{}{
+		Bind: []any{
 			app.Service,
 			app,
 		},
@@ -48,6 +63,6 @@ func main() {
 	})
 
 	if err != nil {
-		println("Error:", err.Error())
+		log.Error("application failed to start", "error", err)
 	}
 }

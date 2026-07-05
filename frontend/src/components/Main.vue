@@ -11,6 +11,7 @@ import PluginUIHost from './PluginUIHost.vue'
 import UpdateDialog from './UpdateDialog.vue'
 import AboutDialog from './AboutDialog.vue'
 import type { PluginInfo } from '@renderer/data/plugin'
+import { logger } from '@renderer/utils/logger'
 
 const { playerState, applyPreferences } = usePlayer()
 const { playlistState } = usePlaylist()
@@ -41,7 +42,7 @@ onMounted(async () => {
       applyPreferences(prefs)
     }
   } catch (e) {
-    console.error('Load preferences error:', e)
+    logger.error('Load preferences error:', e)
   }
 
   await loadPlaylist()

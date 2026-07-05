@@ -14,6 +14,7 @@ import (
 
 	"graftik-wails/internal/data"
 	"graftik-wails/internal/hls"
+	graftikLogger "graftik-wails/internal/logger"
 	"graftik-wails/internal/media"
 
 	"github.com/google/uuid"
@@ -27,6 +28,7 @@ type PlayerService struct {
 	ffprobePath    string
 	ffmpegPath     string
 	hlsEngine      *hls.Engine
+	log            *graftikLogger.Logger
 }
 
 func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.ThumbnailDataStore) *PlayerService {
@@ -34,6 +36,10 @@ func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.Thumbnai
 		store:          store,
 		thumbnailStore: thumbnailStore,
 	}
+}
+
+func (s *PlayerService) SetLogger(log *graftikLogger.Logger) {
+	s.log = log
 }
 
 func (s *PlayerService) SetContext(ctx context.Context) {
@@ -200,7 +206,9 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 		if stderr == "" {
 			stderr = err.Error()
 		}
-		fmt.Printf("ffmpeg thumbnail error: %s\n", stderr)
+		if s.log != nil {
+			s.log.Error("ffmpeg thumbnail extraction failed", "path", videoPath, "error", stderr)
+		}
 		return &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
@@ -318,7 +326,9 @@ func (s *PlayerService) probeDuration(videoPath string) float64 {
 		if stderr == "" {
 			stderr = err.Error()
 		}
-		fmt.Printf("ffprobe error: %s\n", err)
+		if s.log != nil {
+			s.log.Warn("ffprobe duration probe failed", "path", videoPath, "error", err)
+		}
 		return 0
 	}
 

@@ -1,6 +1,7 @@
 import { computed, reactive, readonly, ref } from 'vue'
 import { type PlayerState, RepeatMode, type StreamURLResult, type AppPreferences } from '../types'
 import { formatTime } from '../utils'
+import { logger } from '@renderer/utils/logger'
 
 let videoPort: number | null = null
 
@@ -183,7 +184,7 @@ export function usePlayer() {
         const result = await window.go.main.App.GetStreamURL(playlistItemId) as StreamURLResult | null
         return result
       } catch (e) {
-        console.error('GetStreamURL error:', e)
+        logger.error('GetStreamURL error:', e)
         return null
       }
     }
@@ -192,7 +193,7 @@ export function usePlayer() {
       try {
         await window.go.main.App.StopHLSStream(streamId)
       } catch (e) {
-        console.error('StopHLSStream error:', e)
+        logger.error('StopHLSStream error:', e)
       }
     }
 

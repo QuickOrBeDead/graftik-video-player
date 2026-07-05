@@ -54,6 +54,10 @@ export function InstallUpdate(arg1) {
   return window['go']['main']['App']['InstallUpdate'](arg1);
 }
 
+export function Logger() {
+  return window['go']['main']['App']['Logger']();
+}
+
 export function PickDirectory() {
   return window['go']['main']['App']['PickDirectory']();
 }

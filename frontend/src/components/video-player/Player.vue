@@ -5,6 +5,7 @@ import { usePlaylist } from './composables/usePlaylist'
 import { RepeatMode } from './types'
 import Hls from 'hls.js'
 import Mousetrap from 'mousetrap'
+import { logger } from '@renderer/utils/logger'
 
 const {
     playerState,
@@ -139,7 +140,7 @@ watch(() => playerState.videoSrc, async (newVideoSrc, oldVideoSrc) => {
       hlsInstance.attachMedia(v)
       hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
         if (playerState.isPlaying) {
-          v.play().catch(e => console.error('hls play:', e))
+          v.play().catch(e => logger.error('hls play:', e))
         }
       })
     } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
@@ -165,7 +166,7 @@ watch(() => playerState.isPlaying, async (newPlaying, oldPlaying) => {
       try {
         await v.play()
       } catch (e) {
-        console.error('isPlaying watcher play():', e)
+        logger.error('isPlaying watcher play():', e)
       }
     }
   } else {
@@ -218,7 +219,7 @@ const onMetadataLoaded = () => {
       try {
         await v.play()
       } catch(e) {
-        console.error('v.play()', e)
+        logger.error('v.play()', e)
       }
     } else {
       v.pause()
@@ -241,7 +242,7 @@ const onVideoError = () => {
 
   const errorMessage = errorMap[v.error.code] || "An unknown video error occurred."
 
-  console.error(`Video Error ${v.error.code}: ${errorMessage}`)
+  logger.error(`Video Error ${v.error.code}: ${errorMessage}`)
 }
 
 const calculateVideoHeight = () => {

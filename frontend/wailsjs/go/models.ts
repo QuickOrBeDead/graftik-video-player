@@ -13,6 +13,9 @@ export namespace data {
 	    isPlaying: boolean;
 	    lastPlayedItem: string;
 	    includePrereleasesForUpdates: boolean;
+	    debug: boolean;
+	    logLevel: string;
+	    logToFile: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -32,6 +35,9 @@ export namespace data {
 	        this.isPlaying = source["isPlaying"];
 	        this.lastPlayedItem = source["lastPlayedItem"];
 	        this.includePrereleasesForUpdates = source["includePrereleasesForUpdates"];
+	        this.debug = source["debug"];
+	        this.logLevel = source["logLevel"];
+	        this.logToFile = source["logToFile"];
 	    }
 	}
 	export class PlayerDataStore {
@@ -239,6 +245,23 @@ export namespace keys {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Key = source["Key"];
 	        this.Modifiers = source["Modifiers"];
+	    }
+	}
+
+}
+
+export namespace logger {
+	
+	export class Logger {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Logger(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
 	    }
 	}
 

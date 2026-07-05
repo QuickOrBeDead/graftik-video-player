@@ -30,6 +30,7 @@ type Manager struct {
 	luaPlugins map[string]*LuaPlugin
 	pluginsDir string
 	httpClient *http.Client
+	logFn      func(format string, args ...any)
 }
 
 func NewManager(pluginsDir string) *Manager {
@@ -38,7 +39,12 @@ func NewManager(pluginsDir string) *Manager {
 		luaPlugins: make(map[string]*LuaPlugin),
 		pluginsDir: pluginsDir,
 		httpClient: &http.Client{Timeout: 5 * time.Second},
+		logFn:      func(format string, args ...any) { fmt.Printf(format, args...) },
 	}
+}
+
+func (m *Manager) SetLogFn(fn func(format string, args ...any)) {
+	m.logFn = fn
 }
 
 func (m *Manager) Discover(ctx context.Context) error {
@@ -65,7 +71,7 @@ func (m *Manager) Discover(ctx context.Context) error {
 		}
 
 		if err := m.loadLuaPluginDir(entry.Name()); err != nil {
-			fmt.Printf("plugin: %v\n", err)
+			m.logFn("plugin: %v\n", err)
 		}
 	}
 
@@ -91,7 +97,7 @@ func (m *Manager) loadLuaPluginDir(dirName string) error {
 
 	if cfg.Type != "lua" {
 		if cfg.Command != "" {
-			fmt.Printf("plugin: skipped %s (exec plugins not supported, use type: lua)\n", cfg.Name)
+			m.logFn("plugin: skipped %s (exec plugins not supported, use type: lua)\n", cfg.Name)
 		}
 		return nil
 	}
@@ -102,7 +108,7 @@ func (m *Manager) loadLuaPluginDir(dirName string) error {
 	}
 
 	m.luaPlugins[p.Manifest.ID] = p
-	fmt.Printf("plugin: loaded %s v%s\n", p.Manifest.Name, p.Manifest.Version)
+	m.logFn("plugin: loaded %s v%s\n", p.Manifest.Name, p.Manifest.Version)
 	return nil
 }
 
@@ -212,7 +218,7 @@ func (m *Manager) InstallPlugin(zipData []byte) (*PluginInfo, error) {
 		UI:      p.Manifest.UI,
 	}
 
-	fmt.Printf("plugin: installed %s v%s\n", p.Manifest.Name, p.Manifest.Version)
+	m.logFn("plugin: installed %s v%s\n", p.Manifest.Name, p.Manifest.Version)
 	return info, nil
 }
 
@@ -233,7 +239,7 @@ func (m *Manager) RemovePlugin(pluginID string) error {
 		return fmt.Errorf("remove plugin dir: %w", err)
 	}
 
-	fmt.Printf("plugin: removed %s\n", pluginID)
+	m.logFn("plugin: removed %s\n", pluginID)
 	return nil
 }
 
@@ -333,7 +339,7 @@ func (m *Manager) LaunchExecPlugins(ctx context.Context, hostPort int) {
 			continue
 		}
 		if err := m.launch(ctx, &cfg, hostPort); err != nil {
-			fmt.Printf("plugin: launch %s: %v\n", cfg.Name, err)
+			m.logFn("plugin: launch %s: %v\n", cfg.Name, err)
 		}
 	}
 }
@@ -400,7 +406,7 @@ func (m *Manager) launch(ctx context.Context, cfg *DiscoveryConfig, hostPort int
 	m.instances[manifest.ID] = inst
 	m.mu.Unlock()
 
-	fmt.Printf("plugin: launched %s v%s (port %d)\n", manifest.Name, manifest.Version, port)
+	m.logFn("plugin: launched %s v%s (port %d)\n", manifest.Name, manifest.Version, port)
 	return nil
 }
 

@@ -5,6 +5,7 @@ import { usePlaylist } from './composables/usePlaylist'
 import PlayerView from './Player.vue'
 import PlaylistView from './Playlist.vue'
 import { Playlist } from './types'
+import { logger } from '@renderer/utils/logger'
 
 const { playerState, progressPercent, doSidebarResize, startSidebarResizing, stopSidebarResizing } = usePlayer()
 const { playlistState } = usePlaylist()
@@ -31,9 +32,9 @@ window.onbeforeunload = () => {
       clearInterval(updatePlaylistCurrentItemIntervalId)
     }
 
-    updatePlaylistItem().catch((e) => console.error(e))
+    updatePlaylistItem().catch((e) => logger.error(e))
   } catch (error) {
-    console.error(error)
+    logger.error(error)
   }
 }
 

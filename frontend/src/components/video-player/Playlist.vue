@@ -8,6 +8,7 @@ import ContextMenu from '@imengyu/vue3-context-menu'
 import { Playlist, PlaylistItem, PlaylistSortInfo, PlaylistViewMode, VideoMetadata, StreamInfo } from './types'
 import pLimit from 'p-limit'
 import { usePlaylist } from './composables/usePlaylist'
+import { logger } from '@renderer/utils/logger'
 import { PlaylistItemDto } from '@renderer/data/playlist'
 
 const props = defineProps<{ playlist: Playlist | null }>()
@@ -94,7 +95,7 @@ const getStreamInfo = async (videoPath: string): Promise<StreamInfo | undefined>
   try {
     return await window.go.internal.PlayerService.GetStreamInfo(videoPath) as StreamInfo
   } catch (e) {
-    console.error('GetStreamInfo error:', e)
+    logger.error('GetStreamInfo error:', e)
     return undefined
   }
 }

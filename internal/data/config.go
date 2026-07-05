@@ -8,18 +8,21 @@ import (
 )
 
 type AppConfig struct {
-	CurrentPlaylist string  `json:"currentPlaylist"`
-	Shuffle         bool    `json:"shuffle"`
-	RepeatMode      int     `json:"repeatMode"`
-	VolumeLevel     float64 `json:"volumeLevel"`
-	PlaybackRate    float64 `json:"playbackRate"`
-	SidebarVisible  bool    `json:"sidebarVisible"`
-	SidebarWidth    int     `json:"sidebarWidth"`
-	WindowWidth     int     `json:"windowWidth"`
-	WindowHeight    int     `json:"windowHeight"`
-	IsPlaying                    bool   `json:"isPlaying"`
-	LastPlayedItem               string `json:"lastPlayedItem"`
-	IncludePrereleasesForUpdates bool   `json:"includePrereleasesForUpdates"`
+	CurrentPlaylist              string  `json:"currentPlaylist"`
+	Shuffle                      bool    `json:"shuffle"`
+	RepeatMode                   int     `json:"repeatMode"`
+	VolumeLevel                  float64 `json:"volumeLevel"`
+	PlaybackRate                 float64 `json:"playbackRate"`
+	SidebarVisible               bool    `json:"sidebarVisible"`
+	SidebarWidth                 int     `json:"sidebarWidth"`
+	WindowWidth                  int     `json:"windowWidth"`
+	WindowHeight                 int     `json:"windowHeight"`
+	IsPlaying                    bool    `json:"isPlaying"`
+	LastPlayedItem               string  `json:"lastPlayedItem"`
+	IncludePrereleasesForUpdates bool    `json:"includePrereleasesForUpdates"`
+	Debug                        bool    `json:"debug"`
+	LogLevel                     string  `json:"logLevel"`
+	LogToFile                    bool    `json:"logToFile"`
 }
 
 type ConfigStore struct {
@@ -88,6 +91,9 @@ func (c *ConfigStore) GetPreferences() *AppConfig {
 		IsPlaying:                    c.config.IsPlaying,
 		LastPlayedItem:               c.config.LastPlayedItem,
 		IncludePrereleasesForUpdates: c.config.IncludePrereleasesForUpdates,
+		Debug:                        c.config.Debug,
+		LogLevel:                     c.config.LogLevel,
+		LogToFile:                    c.config.LogToFile,
 	}
 }
 
@@ -124,6 +130,15 @@ func (c *ConfigStore) UpdateSettings(settings map[string]any) error {
 	}
 	if v, ok := settings["includePrereleasesForUpdates"]; ok {
 		c.config.IncludePrereleasesForUpdates = v.(bool)
+	}
+	if v, ok := settings["debug"]; ok {
+		c.config.Debug = v.(bool)
+	}
+	if v, ok := settings["logLevel"]; ok {
+		c.config.LogLevel = v.(string)
+	}
+	if v, ok := settings["logToFile"]; ok {
+		c.config.LogToFile = v.(bool)
 	}
 	return c.Save()
 }

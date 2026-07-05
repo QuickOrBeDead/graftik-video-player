@@ -4,6 +4,7 @@ import {main} from '../models';
 import {menu} from '../models';
 import {plugin} from '../models';
 import {data} from '../models';
+import {logger} from '../models';
 
 export function CheckForUpdates():Promise<main.UpdateInfo>;
 
@@ -30,6 +31,8 @@ export function InstallPluginFromFile(arg1:string):Promise<plugin.PluginInfo>;
 export function InstallPluginFromURL(arg1:string):Promise<plugin.PluginInfo>;
 
 export function InstallUpdate(arg1:string):Promise<void>;
+
+export function Logger():Promise<logger.Logger>;
 
 export function PickDirectory():Promise<string>;
 
