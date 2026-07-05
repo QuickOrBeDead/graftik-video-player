@@ -37,10 +37,10 @@ type App struct {
 	pluginManager   *plugin.Manager
 	pluginsDir      string
 	updateETag      string
-	log             *graftikLogger.Logger
+	log             graftikLogger.Logger
 }
 
-func NewApp(log *graftikLogger.Logger) *App {
+func NewApp(log graftikLogger.Logger) *App {
 	userDataDir, err := os.UserConfigDir()
 	appDataDir := ""
 	if err == nil {
@@ -50,14 +50,14 @@ func NewApp(log *graftikLogger.Logger) *App {
 	pluginsDir := filepath.Join(appDataDir, "plugins")
 
 	return &App{
-		Service:       internal.NewPlayerService(nil, nil),
+		Service:       internal.NewPlayerService(nil, nil, log),
 		pluginManager: plugin.NewManager(pluginsDir),
 		pluginsDir:    pluginsDir,
 		log:           log,
 	}
 }
 
-func (a *App) Logger() *graftikLogger.Logger {
+func (a *App) Logger() graftikLogger.Logger {
 	return a.log
 }
 
@@ -67,7 +67,7 @@ func (a *App) startup(ctx context.Context) {
 	// Defer frontend log sink until frontend signals it's ready
 	wailsRuntime.EventsOn(a.ctx, "frontend-ready", func(_ ...any) {
 		sink := graftikLogger.SyncFrontendSink(a.ctx, wailsRuntime.EventsEmit)
-		a.log.SetFrontendSink(sink)
+		a.log.(*graftikLogger.DefaultLogger).SetFrontendSink(sink)
 	})
 
 	userDataDir, err := os.UserConfigDir()
@@ -110,11 +110,11 @@ func (a *App) startup(ctx context.Context) {
 		if !prefs.Debug {
 			level = graftikLogger.LevelInfo
 		}
-		a.log.SetLevel(level)
+		a.log.(*graftikLogger.DefaultLogger).SetLevel(level)
 
 		if prefs.LogToFile {
 			logPath := filepath.Join(appDataDir, "logs", "app.log")
-			if err := a.log.AddFileHandler(logPath); err != nil {
+			if err := a.log.(*graftikLogger.DefaultLogger).AddFileHandler(logPath); err != nil {
 				a.log.Warn("failed to enable file logging", "path", logPath, "error", err)
 			}
 		}
@@ -125,12 +125,11 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	// Start dedicated video file server with mux
-	a.videoServer, err = NewVideoServer()
+	a.videoServer, err = NewVideoServer(a.log)
 	if err != nil {
 		a.log.Error("App startup: failed to start video server", "error", err)
 	}
 	if a.videoServer != nil {
-		a.videoServer.SetLogger(a.log)
 		a.log.Debug("App startup: video server started", "port", a.videoServer.Port())
 	}
 
@@ -155,7 +154,6 @@ func (a *App) startup(ctx context.Context) {
 	a.Service.SetContext(ctx)
 	a.Service.SetFFmpegPaths(ffmpegPath, ffprobePath)
 	a.Service.SetHlsEngine(a.hlsEngine)
-	a.Service.SetLogger(a.log)
 
 	// Register HLS routes on video server
 	if a.videoServer != nil {
@@ -257,34 +255,24 @@ func (a *App) GetVideoServerPort() int {
 }
 
 func (a *App) GetStreamURL(playlistItemID string) *data.StreamURLResult {
-	if a.log != nil {
-		a.log.Debug("GetStreamURL starting", "playlistItemID", playlistItemID)
-	}
+	a.log.Debug("GetStreamURL starting", "playlistItemID", playlistItemID)
 
 	if a.store == nil || a.hlsEngine == nil {
-		if a.log != nil {
-			a.log.Debug("GetStreamURL: store or hlsEngine nil")
-		}
+		a.log.Debug("GetStreamURL: store or hlsEngine nil")
 		return nil
 	}
 
 	item := a.store.GetPlaylistItem(playlistItemID)
 	if item == nil {
-		if a.log != nil {
-			a.log.Debug("GetStreamURL: playlist item not found", "playlistItemID", playlistItemID)
-		}
+		a.log.Debug("GetStreamURL: playlist item not found", "playlistItemID", playlistItemID)
 		return nil
 	}
 
-	if a.log != nil {
-		a.log.Debug("GetStreamURL: playlist item found", "id", item.ID, "path", item.Path, "title", item.Title)
-	}
+	a.log.Debug("GetStreamURL: playlist item found", "id", item.ID, "path", item.Path, "title", item.Title)
 
 	// Stop previous HLS stream if any
 	if a.currentStreamID != "" {
-		if a.log != nil {
-			a.log.Debug("GetStreamURL: stopping previous stream", "streamID", a.currentStreamID)
-		}
+		a.log.Debug("GetStreamURL: stopping previous stream", "streamID", a.currentStreamID)
 		a.hlsEngine.StopStream(a.currentStreamID)
 		a.currentStreamID = ""
 	}
@@ -293,9 +281,7 @@ func (a *App) GetStreamURL(playlistItemID string) *data.StreamURLResult {
 	if media.IsNativeExtension(item.Path) {
 		url := fmt.Sprintf("http://127.0.0.1:%d/api/video?path=%s",
 			a.videoServer.Port(), url.QueryEscape(item.Path))
-		if a.log != nil {
-			a.log.Debug("GetStreamURL: native extension, serving directly", "url", url)
-		}
+		a.log.Debug("GetStreamURL: native extension, serving directly", "url", url)
 		return &data.StreamURLResult{URL: url}
 	}
 
@@ -306,17 +292,13 @@ func (a *App) GetStreamURL(playlistItemID string) *data.StreamURLResult {
 		return nil
 	}
 
-	if a.log != nil {
-		a.log.Debug("GetStreamURL: probe result", "path", item.Path, "action", info.Action, "actionLabel", info.ActionLabel)
-	}
+	a.log.Debug("GetStreamURL: probe result", "path", item.Path, "action", info.Action, "actionLabel", info.ActionLabel)
 
 	// If natively playable, serve directly
 	if info.Action == "native" {
 		url := fmt.Sprintf("http://127.0.0.1:%d/api/video?path=%s",
 			a.videoServer.Port(), url.QueryEscape(item.Path))
-		if a.log != nil {
-			a.log.Debug("GetStreamURL: native playable, serving directly", "url", url)
-		}
+		a.log.Debug("GetStreamURL: native playable, serving directly", "url", url)
 		return &data.StreamURLResult{URL: url}
 	}
 
@@ -327,10 +309,8 @@ func (a *App) GetStreamURL(playlistItemID string) *data.StreamURLResult {
 			info.Action = "hw_transcode"
 			info.HWEncoder = hwEncoderShortLabel(hw)
 			info.ActionLabel = fmt.Sprintf("HW Transcode (%s)", info.HWEncoder)
-			if a.log != nil {
-				a.log.Debug("GetStreamURL: hw encoder detected", "encoder", hw)
-			}
-		} else if a.log != nil {
+			a.log.Debug("GetStreamURL: hw encoder detected", "encoder", hw)
+		} else {
 			a.log.Debug("GetStreamURL: no hw encoder, using sw transcode")
 		}
 	}
@@ -344,9 +324,7 @@ func (a *App) GetStreamURL(playlistItemID string) *data.StreamURLResult {
 
 	a.currentStreamID = streamID
 
-	if a.log != nil {
-		a.log.Debug("GetStreamURL: hls stream started", "streamID", streamID)
-	}
+	a.log.Debug("GetStreamURL: hls stream started", "streamID", streamID)
 
 	return &data.StreamURLResult{
 		URL:      fmt.Sprintf("http://127.0.0.1:%d/hls/%s/stream.m3u8", a.videoServer.Port(), streamID),

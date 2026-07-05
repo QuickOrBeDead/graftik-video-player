@@ -13,15 +13,14 @@ type VideoServer struct {
 	mux      *http.ServeMux
 	listener net.Listener
 	port     int
-	log      *graftikLogger.Logger
+	log      graftikLogger.Logger
 }
 
-func (vs *VideoServer) SetLogger(log *graftikLogger.Logger) {
-	vs.log = log
-}
-
-func NewVideoServer() (*VideoServer, error) {
-	vs := &VideoServer{}
+func NewVideoServer(log graftikLogger.Logger) (*VideoServer, error) {
+	if log == nil {
+		panic("logger must not be nil")
+	}
+	vs := &VideoServer{log: log}
 
 	vs.mux = http.NewServeMux()
 
@@ -35,28 +34,20 @@ func NewVideoServer() (*VideoServer, error) {
 		}
 
 		videoPath := r.URL.Query().Get("path")
-		if vs.log != nil {
-			vs.log.Debug("VideoServer /api/video: video request", "method", r.Method, "path", videoPath, "remote", r.RemoteAddr)
-		}
+		vs.log.Debug("VideoServer /api/video: video request", "method", r.Method, "path", videoPath, "remote", r.RemoteAddr)
 		if videoPath == "" || !filepath.IsAbs(videoPath) {
-			if vs.log != nil {
-				vs.log.Debug("VideoServer /api/video: invalid video path", "path", videoPath)
-			}
+			vs.log.Debug("VideoServer /api/video: invalid video path", "path", videoPath)
 			http.Error(w, "Invalid path", http.StatusBadRequest)
 			return
 		}
 
 		if _, err := os.Stat(videoPath); os.IsNotExist(err) {
-			if vs.log != nil {
-				vs.log.Debug("VideoServer /api/video: video file not found", "path", videoPath)
-			}
+			vs.log.Debug("VideoServer /api/video: video file not found", "path", videoPath)
 			http.Error(w, "Not found", http.StatusNotFound)
 			return
 		}
 
-		if vs.log != nil {
-			vs.log.Debug("VideoServer /api/video: serving video file", "path", videoPath)
-		}
+		vs.log.Debug("VideoServer /api/video: serving video file", "path", videoPath)
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Accept-Ranges", "bytes")
 		http.ServeFile(w, r, videoPath)
@@ -79,8 +70,6 @@ func (vs *VideoServer) Port() int {
 }
 
 func (vs *VideoServer) RegisterHLS(hlsDir string) {
-	if vs.log != nil {
-		vs.log.Debug("VideoServer: hls http handler is registered to /hls/", "hlsDir", hlsDir)
-	}
+	vs.log.Debug("VideoServer: hls http handler is registered to /hls/", "hlsDir", hlsDir)
 	vs.mux.Handle("/hls/", http.StripPrefix("/hls/", http.FileServer(http.Dir(hlsDir))))
 }

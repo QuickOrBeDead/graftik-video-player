@@ -348,6 +348,7 @@ function toggleLevel(level: LogLevel) {
   padding: 0 4px;
   outline: none;
   text-align: center;
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 

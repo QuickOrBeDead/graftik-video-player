@@ -28,18 +28,18 @@ type PlayerService struct {
 	ffprobePath    string
 	ffmpegPath     string
 	hlsEngine      *hls.Engine
-	log            *graftikLogger.Logger
+	log            graftikLogger.Logger
 }
 
-func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.ThumbnailDataStore) *PlayerService {
+func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.ThumbnailDataStore, log graftikLogger.Logger) *PlayerService {
+	if log == nil {
+		panic("logger must not be nil")
+	}
 	return &PlayerService{
 		store:          store,
 		thumbnailStore: thumbnailStore,
+		log:            log,
 	}
-}
-
-func (s *PlayerService) SetLogger(log *graftikLogger.Logger) {
-	s.log = log
 }
 
 func (s *PlayerService) SetContext(ctx context.Context) {
@@ -155,36 +155,26 @@ func (s *PlayerService) GetPlaylistName(id string) string {
 }
 
 func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID, videoPath string) *data.VideoMetadata {
-	if s.log != nil {
-		s.log.Debug("GetPlaylistItemVideoMetadata started", "playlistID", playlistID, "playlistItemID", playlistItemID, "videoPath", videoPath)
-	}
+	s.log.Debug("GetPlaylistItemVideoMetadata started", "playlistID", playlistID, "playlistItemID", playlistItemID, "videoPath", videoPath)
 
 	stats, err := os.Stat(videoPath)
 	if err != nil {
-		if s.log != nil {
-			s.log.Debug("GetPlaylistItemVideoMetadata: file stat failed", "path", videoPath, "error", err)
-		}
+		s.log.Debug("GetPlaylistItemVideoMetadata: file stat failed", "path", videoPath, "error", err)
 		return nil
 	}
 	lastModified := float64(stats.ModTime().UnixMilli())
 	fileSize := float64(stats.Size())
 
-	if s.log != nil {
-		s.log.Debug("GetPlaylistItemVideoMetadata: file stat", "path", videoPath, "size", fileSize, "lastModified", lastModified)
-	}
+	s.log.Debug("GetPlaylistItemVideoMetadata: file stat", "path", videoPath, "size", fileSize, "lastModified", lastModified)
 
 	fileHash := s.thumbnailStore.CalculateFileHash(videoPath, stats.Size(), stats.ModTime().UnixMilli())
 
 	// Check cache
 	thumbnail, _ := s.thumbnailStore.GetThumbnail(playlistID, playlistItemID, fileHash)
 	if thumbnail != "" {
-		if s.log != nil {
-			s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache hit", "fileHash", fileHash, "playlistItemID", playlistItemID)
-		}
+		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache hit", "fileHash", fileHash, "playlistItemID", playlistItemID)
 		duration := s.probeDuration(videoPath)
-		if s.log != nil {
-			s.log.Debug("GetPlaylistItemVideoMetadata: returning result", "duration", duration, "fileSize", fileSize)
-		}
+		s.log.Debug("GetPlaylistItemVideoMetadata: returning result", "duration", duration, "fileSize", fileSize)
 		return &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
@@ -193,15 +183,11 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 		}
 	}
 
-	if s.log != nil {
-		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache miss", "fileHash", fileHash, "playlistItemID", playlistItemID)
-	}
+	s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache miss", "fileHash", fileHash, "playlistItemID", playlistItemID)
 
 	// Probe duration
 	duration := s.probeDuration(videoPath)
-	if s.log != nil {
-		s.log.Debug("GetPlaylistItemVideoMetadata: probed duration", "path", videoPath, "duration", duration)
-	}
+	s.log.Debug("GetPlaylistItemVideoMetadata: probed duration", "path", videoPath, "duration", duration)
 
 	// Extract thumbnail
 	seekTime := duration * 0.1
@@ -209,9 +195,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 		seekTime = 1.0
 	}
 
-	if s.log != nil {
-		s.log.Debug("GetPlaylistItemVideoMetadata: extracting thumbnail", "path", videoPath, "seekTime", seekTime)
-	}
+	s.log.Debug("GetPlaylistItemVideoMetadata: extracting thumbnail", "path", videoPath, "seekTime", seekTime)
 
 	tempFile := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%d.jpeg", playlistItemID, time.Now().UnixMilli()))
 	defer os.Remove(tempFile)
@@ -234,9 +218,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 		if stderr == "" {
 			stderr = err.Error()
 		}
-		if s.log != nil {
-			s.log.Error("GetPlaylistItemVideoMetadata: ffmpeg thumbnail extraction failed", "path", videoPath, "error", stderr)
-		}
+		s.log.Error("GetPlaylistItemVideoMetadata: ffmpeg thumbnail extraction failed", "path", videoPath, "error", stderr)
 		return &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
@@ -245,15 +227,11 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 		}
 	}
 
-	if s.log != nil {
-		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail extracted to temp file", "tempFile", tempFile)
-	}
+	s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail extracted to temp file", "tempFile", tempFile)
 
 	imageData, err := os.ReadFile(tempFile)
 	if err != nil {
-		if s.log != nil {
-			s.log.Debug("GetPlaylistItemVideoMetadata: failed to read temp thumbnail", "tempFile", tempFile, "error", err)
-		}
+		s.log.Debug("GetPlaylistItemVideoMetadata: failed to read temp thumbnail", "tempFile", tempFile, "error", err)
 		return &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
@@ -264,9 +242,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 
 	s.thumbnailStore.SetThumbnail(playlistID, playlistItemID, fileHash, imageData)
 
-	if s.log != nil {
-		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cached and returning", "playlistItemID", playlistItemID, "imageSize", len(imageData))
-	}
+	s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cached and returning", "playlistItemID", playlistItemID, "imageSize", len(imageData))
 
 	return &data.VideoMetadata{
 		Duration:     duration,
@@ -299,24 +275,18 @@ func (s *PlayerService) InitNewPlaylistItems(filePaths []string) []data.Playlist
 }
 
 func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
-	if s.log != nil {
-		s.log.Debug("GetStreamInfo started", "videoPath", videoPath)
-	}
+	s.log.Debug("GetStreamInfo started", "videoPath", videoPath)
 
 	info, err := media.Probe(s.ffprobePath, videoPath)
 	if err != nil {
-		if s.log != nil {
-			s.log.Debug("GetStreamInfo: media probe failed, falling back to SW transcode", "path", videoPath, "error", err)
-		}
+		s.log.Debug("GetStreamInfo: media probe failed, falling back to SW transcode", "path", videoPath, "error", err)
 		return &data.StreamInfo{
 			Action:      "sw_transcode",
 			ActionLabel: "SW Transcode",
 		}
 	}
 
-	if s.log != nil {
-		s.log.Debug("GetStreamInfo: media probe result", "path", videoPath, "action", info.Action, "actionLabel", info.ActionLabel)
-	}
+	s.log.Debug("GetStreamInfo: media probe result", "path", videoPath, "action", info.Action, "actionLabel", info.ActionLabel)
 
 	if info.Action == "sw_transcode" && s.hlsEngine != nil {
 		hwEncoder := media.DetectHWEncoder(s.ffmpegPath)
@@ -324,10 +294,8 @@ func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
 			info.Action = "hw_transcode"
 			info.ActionLabel = hwEncoderShortLabel(hwEncoder)
 			info.HWEncoder = hwEncoderShortLabel(hwEncoder)
-			if s.log != nil {
-				s.log.Debug("GetStreamInfo: hw encoder detected, upgrading to HW transcode", "encoder", hwEncoder, "path", videoPath)
-			}
-		} else if s.log != nil {
+			s.log.Debug("GetStreamInfo: hw encoder detected, upgrading to HW transcode", "encoder", hwEncoder, "path", videoPath)
+		} else {
 			s.log.Debug("GetStreamInfo: no hw encoder detected, keeping SW transcode", "path", videoPath)
 		}
 	}
@@ -381,9 +349,7 @@ func (s *PlayerService) probeDuration(videoPath string) float64 {
 		if stderr == "" {
 			stderr = err.Error()
 		}
-		if s.log != nil {
-			s.log.Warn("ffprobe duration probe failed", "path", videoPath, "error", err)
-		}
+		s.log.Warn("ffprobe duration probe failed", "path", videoPath, "error", err)
 		return 0
 	}
 

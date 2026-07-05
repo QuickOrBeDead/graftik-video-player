@@ -19,9 +19,16 @@ const (
 	LevelError = slog.LevelError
 )
 
+type Logger interface {
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Warn(msg string, args ...any)
+	Error(msg string, args ...any)
+}
+
 type FrontendSink func(level slog.Level, msg string, attrs ...slog.Attr)
 
-type Logger struct {
+type DefaultLogger struct {
 	*slog.Logger
 	level        slog.Leveler
 	frontendSink FrontendSink
@@ -38,7 +45,7 @@ type LogConfig struct {
 	LogFilename string
 }
 
-func New(cfg LogConfig) *Logger {
+func New(cfg LogConfig) *DefaultLogger {
 	var handlers []slog.Handler
 
 	opts := &slog.HandlerOptions{
@@ -57,7 +64,7 @@ func New(cfg LogConfig) *Logger {
 	textHandler := slog.NewTextHandler(os.Stderr, opts)
 	handlers = append(handlers, textHandler)
 
-	l := &Logger{
+	l := &DefaultLogger{
 		level: cfg.Level,
 	}
 
@@ -81,13 +88,13 @@ func New(cfg LogConfig) *Logger {
 	return l
 }
 
-func (l *Logger) SetLevel(level slog.Level) {
+func (l *DefaultLogger) SetLevel(level slog.Level) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.level = level
 }
 
-func (l *Logger) Close() error {
+func (l *DefaultLogger) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.file != nil {
@@ -96,7 +103,7 @@ func (l *Logger) Close() error {
 	return nil
 }
 
-func (l *Logger) SetFrontendSink(sink FrontendSink) {
+func (l *DefaultLogger) SetFrontendSink(sink FrontendSink) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.frontendSink = sink
@@ -109,7 +116,7 @@ func (l *Logger) SetFrontendSink(sink FrontendSink) {
 	l.flushed = true
 }
 
-func (l *Logger) AddFileHandler(path string) error {
+func (l *DefaultLogger) AddFileHandler(path string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -138,7 +145,7 @@ func (l *Logger) AddFileHandler(path string) error {
 	return nil
 }
 
-func (l *Logger) sendToFrontend(level slog.Level, msg string, attrs []slog.Attr) {
+func (l *DefaultLogger) sendToFrontend(level slog.Level, msg string, attrs []slog.Attr) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.frontendSink != nil {
@@ -159,7 +166,7 @@ func (l *Logger) sendToFrontend(level slog.Level, msg string, attrs []slog.Attr)
 
 type multiHandler struct {
 	handlers []slog.Handler
-	logger   *Logger
+	logger   *DefaultLogger
 }
 
 func (h *multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
