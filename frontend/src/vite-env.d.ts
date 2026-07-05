@@ -25,6 +25,7 @@ declare global {
           GetStreamURL: (playlistItemId: string) => Promise<{ url: string; streamId?: string }>
           StopHLSStream: (streamId: string) => Promise<void>
           CreateAppMenu: () => Promise<any>
+          SetReadyToClose: () => Promise<void>
         }
       }
       internal: {

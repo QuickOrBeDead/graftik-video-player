@@ -66,6 +66,10 @@ export function PickPluginFile() {
   return window['go']['main']['App']['PickPluginFile']();
 }
 
+export function SetReadyToClose() {
+  return window['go']['main']['App']['SetReadyToClose']();
+}
+
 export function StopHLSStream(arg1) {
   return window['go']['main']['App']['StopHLSStream'](arg1);
 }

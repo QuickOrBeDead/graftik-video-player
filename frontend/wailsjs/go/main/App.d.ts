@@ -38,4 +38,6 @@ export function PickDirectory():Promise<string>;
 
 export function PickPluginFile():Promise<string>;
 
+export function SetReadyToClose():Promise<void>;
+
 export function StopHLSStream(arg1:string):Promise<void>;

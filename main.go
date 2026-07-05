@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -19,6 +21,12 @@ var assets embed.FS
 
 //go:embed build/appicon.png
 var appIcon []byte
+
+var readyToClose = make(chan bool)
+
+func (*App) SetReadyToClose() {
+	readyToClose <- true
+}
 
 func main() {
 	logDir := ""
@@ -59,6 +67,11 @@ func main() {
 			WebviewGpuPolicy:    linux.WebviewGpuPolicyAlways,
 			ProgramName:         "graftik-video-player",
 			Icon:                appIcon,
+		},
+		OnBeforeClose: func(ctx context.Context) bool {
+			wailsRuntime.EventsEmit(ctx, "before-app-close")
+			<-readyToClose
+			return false
 		},
 	})
 

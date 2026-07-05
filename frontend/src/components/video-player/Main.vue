@@ -20,6 +20,12 @@ watch(() => playlistState.currentItem, async (newCurrentItem, oldCurrentItem) =>
   }
 })
 
+watch(() => playerState.isPlaying, async (newIsPlaying, oldIsPlaying) => {
+  if (newIsPlaying !== oldIsPlaying) {
+    await updatePlaylistItem()
+  }
+})
+
 let updatePlaylistCurrentItemIntervalId: ReturnType<typeof setInterval>
 
 updatePlaylistCurrentItemIntervalId = setInterval(
@@ -27,14 +33,18 @@ updatePlaylistCurrentItemIntervalId = setInterval(
   10000
 )
 
+window.runtime.EventsOn('before-app-close', async () => {
+  logger.debug('[SAVE:BEFORE-CLOSE] Performing final playlist item save')
+  await updatePlaylistItem()
+  await window.go.main.App.SetReadyToClose()
+})
+
 window.onbeforeunload = () => {
-  logger.debug('[SAVE:BEFOREUNLOAD] Page unloading — performing final playlist item save')
+  logger.debug('[WINDOW:BEFOREUNLOAD] Page unloading')
   try {
     if (updatePlaylistCurrentItemIntervalId) {
       clearInterval(updatePlaylistCurrentItemIntervalId)
     }
-
-    updatePlaylistItem().catch((e) => logger.error(e))
   } catch (error) {
     logger.error(error)
   }
@@ -90,7 +100,7 @@ const stopResize = () => {
         :class="{ active: playerState.isSidebarResizing }"
         @mousedown="startResizing"
     ></div>
-    <PlaylistView :playlist="playlist" @before-playlist-item-change="updatePlaylistItem"></PlaylistView>
+    <PlaylistView :playlist="playlist" @before-playlist-item-change="async () => await updatePlaylistItem()"></PlaylistView>
 </template>
 
 <style lang="css" scoped>
