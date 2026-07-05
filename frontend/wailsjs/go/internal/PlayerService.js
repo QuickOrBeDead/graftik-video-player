@@ -86,10 +86,6 @@ export function SetHlsEngine(arg1) {
   return window['go']['internal']['PlayerService']['SetHlsEngine'](arg1);
 }
 
-export function SetLogger(arg1) {
-  return window['go']['internal']['PlayerService']['SetLogger'](arg1);
-}
-
 export function SetStore(arg1) {
   return window['go']['internal']['PlayerService']['SetStore'](arg1);
 }

@@ -3,7 +3,6 @@
 import {data} from '../models';
 import {context} from '../models';
 import {hls} from '../models';
-import {logger} from '../models';
 
 export function AddPlaylist(arg1:string):Promise<void>;
 
@@ -46,8 +45,6 @@ export function SetContext(arg1:context.Context):Promise<void>;
 export function SetFFmpegPaths(arg1:string,arg2:string):Promise<void>;
 
 export function SetHlsEngine(arg1:hls.Engine):Promise<void>;
-
-export function SetLogger(arg1:logger.Logger):Promise<void>;
 
 export function SetStore(arg1:data.PlayerDataStore):Promise<void>;
 

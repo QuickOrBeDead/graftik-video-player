@@ -15,6 +15,7 @@ const { playlist } = defineProps<{
 
 watch(() => playlistState.currentItem, async (newCurrentItem, oldCurrentItem) => {
   if (playlistState.id && newCurrentItem && oldCurrentItem !== newCurrentItem) {
+    logger.debug('[SAVE:PLAYLIST-META] currentItem changed — updating playlist.current_item:', { playlistId: playlistState.id, currentItem: newCurrentItem })
     await window.go.internal.PlayerService.UpdatePlaylist(playlistState.id, { current_item: newCurrentItem })
   }
 })
@@ -27,6 +28,7 @@ updatePlaylistCurrentItemIntervalId = setInterval(
 )
 
 window.onbeforeunload = () => {
+  logger.debug('[SAVE:BEFOREUNLOAD] Page unloading — performing final playlist item save')
   try {
     if (updatePlaylistCurrentItemIntervalId) {
       clearInterval(updatePlaylistCurrentItemIntervalId)
@@ -40,6 +42,7 @@ window.onbeforeunload = () => {
 
 const updatePlaylistItem = async () => {
   if (!playlistState.currentItem) {
+    logger.debug('[SAVE:ITEM-SKIP] updatePlaylistItem skipped — no currentItem')
     return
   }
 
@@ -56,6 +59,7 @@ const updatePlaylistItem = async () => {
     data = { is_playing: false }
   }
 
+  logger.debug('[SAVE:ITEM] Saving playlist item data via UpdatePlaylistItem:', { itemId: playlistState.currentItem, data })
   await window.go.internal.PlayerService.UpdatePlaylistItem(playlistState.currentItem, data)
 }
 

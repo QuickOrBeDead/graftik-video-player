@@ -30,6 +30,7 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleSave(data: Record<string, any>) {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
+    logger.debug('[SAVE:PREFERENCES] Saving preferences (500ms debounced):', data)
     window.go.internal.PlayerService.SavePreferences(data)
   }, 500)
 }
@@ -40,6 +41,7 @@ onMounted(async () => {
     const prefs = await window.go.internal.PlayerService.GetPreferences()
     if (prefs) {
       applyPreferences(prefs)
+      logger.debug('[LOAD:PREFERENCES] Preferences loaded:', prefs)
     }
   } catch (e) {
     logger.error('Load preferences error:', e)
@@ -48,7 +50,10 @@ onMounted(async () => {
   await loadPlaylist()
 
   window.runtime.EventsOn('load-current-playlist', (p: unknown) => {
-    if (p) setPlaylist(p as DbPlaylist)
+    if (p) {
+      setPlaylist(p as DbPlaylist)
+      logger.debug('[LOAD:PLAYLIST] Received load-current-playlist event:', p)
+    }
   })
 
   window.runtime.EventsOn('load-playlist-name', async () => {
@@ -105,6 +110,7 @@ const loadPlaylist = async () => {
   const dbPlaylist = await window.go.internal.PlayerService.GetCurrentPlaylist() as DbPlaylist | null
   if (dbPlaylist) {
     setPlaylist(dbPlaylist)
+    logger.debug('[LOAD:PLAYLIST] Loaded playlist:', dbPlaylist)
   }
 }
 
