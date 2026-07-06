@@ -72,6 +72,7 @@ func (s *PlayerService) FFmpegPath() string {
 }
 
 func (s *PlayerService) GetCurrentPlaylist() *data.PlaylistDto {
+	s.log.Debug("GetCurrentPlaylist: started")
 	playlistID := s.store.GetCurrentPlaylistID()
 	if playlistID == "" {
 		s.log.Debug("GetCurrentPlaylist: no current playlist set")
@@ -86,15 +87,20 @@ func (s *PlayerService) GetCurrentPlaylist() *data.PlaylistDto {
 }
 
 func (s *PlayerService) GetPlaylists() []data.PlaylistListItem {
+	s.log.Debug("GetPlaylists: started")
 	items, err := s.store.GetPlaylists()
 	if err != nil {
 		s.log.Error("GetPlaylists: failed", "error", err)
 		return nil
 	}
+
+	s.log.Debug("GetPlaylists: finished", "count", len(items))
+
 	return items
 }
 
 func (s *PlayerService) SelectPlaylist(id string) {
+	s.log.Debug("SelectPlaylist: started", "id", id)
 	if err := s.store.SetCurrentPlaylistID(id); err != nil {
 		s.log.Error("SelectPlaylist: SetCurrentPlaylistID failed", "id", id, "error", err)
 		return
@@ -105,9 +111,11 @@ func (s *PlayerService) SelectPlaylist(id string) {
 		return
 	}
 	s.emitEvent("load-current-playlist", playlist)
+	s.log.Debug("SelectPlaylist: finished", "playlist", playlist)
 }
 
 func (s *PlayerService) AddPlaylist(name string) {
+	s.log.Debug("AddPlaylist: started", "name", name)
 	playlist, err := s.store.AddPlaylist(name)
 	if err != nil {
 		s.log.Error("AddPlaylist: AddPlaylist failed", "name", name, "error", err)
@@ -117,53 +125,71 @@ func (s *PlayerService) AddPlaylist(name string) {
 		s.store.SetCurrentPlaylistID(playlist.ID)
 		s.emitEvent("load-current-playlist", playlist)
 	}
+
+	s.log.Debug("AddPlaylist: finished")
 }
 
 func (s *PlayerService) UpdatePlaylistName(id, name string) {
+	s.log.Debug("UpdatePlaylistName: started", "id", id, "name", name)
 	s.store.UpdatePlaylist(id, map[string]any{"name": name})
 	s.emitEvent("load-playlist-name")
+	s.log.Debug("UpdatePlaylistName: finished")
 }
 
 func (s *PlayerService) UpdatePlaylist(id string, data map[string]any) {
+	s.log.Debug("UpdatePlaylist: started", "id", id, "data", data)
 	s.store.UpdatePlaylist(id, data)
+	s.log.Debug("UpdatePlaylist: finished")
 }
 
 func (s *PlayerService) DeletePlaylist(id string) {
+	s.log.Debug("DeletePlaylist: started", "id", id)
 	s.store.DeletePlaylist(id)
+	s.log.Debug("DeletePlaylist: finished")
 }
 
 func (s *PlayerService) AddPlaylistItems(items []data.PlaylistItemDto) {
+	s.log.Debug("AddPlaylistItems: started", "count", len(items))
 	s.store.AddPlaylistItems(items)
+	s.log.Debug("AddPlaylistItems: finished")
 }
 
 func (s *PlayerService) UpdatePlaylistItem(id string, data map[string]any) {
+	s.log.Debug("UpdatePlaylistItem: started", "id", id, "data", data)
 	s.store.UpdatePlaylistItem(id, data)
+	s.log.Debug("UpdatePlaylistItem: finished")
 }
 
 func (s *PlayerService) DeletePlaylistItem(id string) {
+	s.log.Debug("DeletePlaylistItem: started", "id", id)
 	s.store.DeletePlaylistItem(id)
+	s.log.Debug("DeletePlaylistItem: finished")
 }
 
 func (s *PlayerService) GetPlaylist(id string) *data.PlaylistDto {
+	s.log.Debug("GetPlaylist: started", "id", id)
 	playlist, err := s.store.GetPlaylistByID(id)
 	if err != nil {
 		s.log.Error("GetPlaylist: failed", "id", id, "error", err)
 		return nil
 	}
+	s.log.Debug("GetPlaylist: finished", "playlist", playlist)
 	return playlist
 }
 
 func (s *PlayerService) GetPlaylistName(id string) string {
+	s.log.Debug("GetPlaylistName: started", "id", id)
 	name, err := s.store.GetPlaylistName(id)
 	if err != nil {
 		s.log.Error("GetPlaylistName: failed", "id", id, "error", err)
 		return ""
 	}
+	s.log.Debug("GetPlaylistName: finished", "name", name)
 	return name
 }
 
 func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID, videoPath string) *data.VideoMetadata {
-	s.log.Debug("GetPlaylistItemVideoMetadata started", "playlistID", playlistID, "playlistItemID", playlistItemID, "videoPath", videoPath)
+	s.log.Debug("GetPlaylistItemVideoMetadata: started", "playlistID", playlistID, "playlistItemID", playlistItemID, "videoPath", videoPath)
 
 	stats, err := os.Stat(videoPath)
 	if err != nil {
@@ -183,12 +209,14 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache hit", "fileHash", fileHash, "playlistItemID", playlistItemID)
 		duration := s.probeDuration(videoPath)
 		s.log.Debug("GetPlaylistItemVideoMetadata: returning result", "duration", duration, "fileSize", fileSize)
-		return &data.VideoMetadata{
+		md := &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
 			FileSize:     fileSize,
 			Thumbnail:    thumbnail,
 		}
+		s.log.Debug("GetPlaylistItemVideoMetadata: finished", "result", md)
+		return md
 	}
 
 	s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache miss", "fileHash", fileHash, "playlistItemID", playlistItemID)
@@ -227,12 +255,14 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 			stderr = err.Error()
 		}
 		s.log.Error("GetPlaylistItemVideoMetadata: ffmpeg thumbnail extraction failed", "path", videoPath, "error", stderr)
-		return &data.VideoMetadata{
+		md := &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
 			FileSize:     fileSize,
 			Thumbnail:    "",
 		}
+		s.log.Debug("GetPlaylistItemVideoMetadata: finished", "result", md)
+		return md
 	}
 
 	s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail extracted to temp file", "tempFile", tempFile)
@@ -240,35 +270,44 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 	imageData, err := os.ReadFile(tempFile)
 	if err != nil {
 		s.log.Error("GetPlaylistItemVideoMetadata: failed to read temp thumbnail", "tempFile", tempFile, "error", err)
-		return &data.VideoMetadata{
+		md := &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
 			FileSize:     fileSize,
 			Thumbnail:    "",
 		}
+		s.log.Debug("GetPlaylistItemVideoMetadata: finished", "result", md)
+		return md
 	}
 
 	s.thumbnailStore.SetThumbnail(playlistID, playlistItemID, fileHash, imageData)
 
 	s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cached and returning", "playlistItemID", playlistItemID, "imageSize", len(imageData))
 
-	return &data.VideoMetadata{
+	md := &data.VideoMetadata{
 		Duration:     duration,
 		LastModified: lastModified,
 		FileSize:     fileSize,
 		Thumbnail:    "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(imageData),
 	}
+	s.log.Debug("GetPlaylistItemVideoMetadata: finished", "result", md)
+	return md
 }
 
 func (s *PlayerService) RebalancePlaylistOrder(id string) {
+	s.log.Debug("RebalancePlaylistOrder: started", "id", id)
 	s.store.RebalancePlaylistOrder(id)
+	s.log.Debug("RebalancePlaylistOrder: finished")
 }
 
 func (s *PlayerService) OpenContainingFolder(filePath string) {
+	s.log.Debug("OpenContainingFolder: started", "filePath", filePath)
 	exec.Command("explorer", "/select,", filePath).Start()
+	s.log.Debug("OpenContainingFolder: finished")
 }
 
 func (s *PlayerService) InitNewPlaylistItems(filePaths []string) []data.PlaylistItemDto {
+	s.log.Debug("InitNewPlaylistItems: started", "count", len(filePaths))
 	items := make([]data.PlaylistItemDto, len(filePaths))
 	for i, fp := range filePaths {
 		items[i] = data.PlaylistItemDto{
@@ -279,19 +318,22 @@ func (s *PlayerService) InitNewPlaylistItems(filePaths []string) []data.Playlist
 			PlaylistID: "",
 		}
 	}
+	s.log.Debug("InitNewPlaylistItems: finished", "count", len(items))
 	return items
 }
 
 func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
-	s.log.Debug("GetStreamInfo started", "videoPath", videoPath)
+	s.log.Debug("GetStreamInfo: started", "videoPath", videoPath)
 
 	info, err := media.Probe(s.ffprobePath, videoPath)
 	if err != nil {
 		s.log.Error("GetStreamInfo: media probe failed, falling back to SW transcode", "path", videoPath, "error", err)
-		return &data.StreamInfo{
+		info := &data.StreamInfo{
 			Action:      "sw_transcode",
 			ActionLabel: "SW Transcode",
 		}
+		s.log.Debug("GetStreamInfo: finished", "action", info.Action, "actionLabel", info.ActionLabel)
+		return info
 	}
 
 	s.log.Debug("GetStreamInfo: media probe result", "path", videoPath, "action", info.Action, "actionLabel", info.ActionLabel)
@@ -308,6 +350,7 @@ func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
 		}
 	}
 
+	s.log.Debug("GetStreamInfo: finished", "action", info.Action, "actionLabel", info.ActionLabel)
 	return info
 }
 
@@ -324,25 +367,34 @@ func hwEncoderShortLabel(name string) string {
 }
 
 func (s *PlayerService) GetPreferences() *data.AppConfig {
+	s.log.Debug("GetPreferences: started")
 	if s.store == nil {
-		return &data.AppConfig{
+		cfg := &data.AppConfig{
 			VolumeLevel:    1.0,
 			PlaybackRate:   1.0,
 			SidebarVisible: true,
 			SidebarWidth:   300,
 		}
+		s.log.Debug("GetPreferences: finished", "cfg", cfg)
+		return cfg
 	}
-	return s.store.GetPreferences()
+	cfg := s.store.GetPreferences()
+	s.log.Debug("GetPreferences: finished", "cfg", cfg)
+	return cfg
 }
 
 func (s *PlayerService) SavePreferences(settings map[string]any) {
+	s.log.Debug("SavePreferences: started", "settings", settings)
 	if s.store == nil {
+		s.log.Debug("SavePreferences: finished")
 		return
 	}
 	s.store.UpdateSettings(settings)
+	s.log.Debug("SavePreferences: finished")
 }
 
 func (s *PlayerService) probeDuration(videoPath string) float64 {
+	s.log.Debug("probeDuration: started", "videoPath", videoPath)
 	var ffprobeStderr bytes.Buffer
 	cmd := exec.Command(s.ffprobePath,
 		"-v", "quiet",
@@ -376,10 +428,13 @@ func (s *PlayerService) probeDuration(videoPath string) float64 {
 		s.log.Error("probeDuration: failed to parse duration", "path", videoPath, "durationStr", format.Format.Duration)
 		return 0
 	}
-	return math.Round(duration*100) / 100
+	duration = math.Round(duration*100) / 100
+	s.log.Debug("probeDuration: finished", "duration", duration)
+	return duration
 }
 
 func (s *PlayerService) emitEvent(event string, data ...any) {
+	s.log.Debug("emitEvent: started", "event", event, "data", data)
 	if s.ctx == nil {
 		s.log.Error("emitEvent: context is nil", "event", event)
 		return
@@ -389,4 +444,5 @@ func (s *PlayerService) emitEvent(event string, data ...any) {
 	} else {
 		runtime.EventsEmit(s.ctx, event)
 	}
+	s.log.Debug("emitEvent: finished")
 }
