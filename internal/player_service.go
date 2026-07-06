@@ -35,6 +35,9 @@ func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.Thumbnai
 	if log == nil {
 		panic("logger must not be nil")
 	}
+	if store == nil {
+		panic("player data store must not be nil")
+	}
 	return &PlayerService{
 		store:          store,
 		thumbnailStore: thumbnailStore,
@@ -44,10 +47,6 @@ func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.Thumbnai
 
 func (s *PlayerService) SetContext(ctx context.Context) {
 	s.ctx = ctx
-}
-
-func (s *PlayerService) SetStore(store *data.PlayerDataStore) {
-	s.store = store
 }
 
 func (s *PlayerService) SetThumbnailStore(ts *data.ThumbnailDataStore) {
@@ -368,16 +367,6 @@ func hwEncoderShortLabel(name string) string {
 
 func (s *PlayerService) GetPreferences() *data.AppConfig {
 	s.log.Debug("GetPreferences: started")
-	if s.store == nil {
-		cfg := &data.AppConfig{
-			VolumeLevel:    1.0,
-			PlaybackRate:   1.0,
-			SidebarVisible: true,
-			SidebarWidth:   300,
-		}
-		s.log.Debug("GetPreferences: finished", "cfg", cfg)
-		return cfg
-	}
 	cfg := s.store.GetPreferences()
 	s.log.Debug("GetPreferences: finished", "cfg", cfg)
 	return cfg
@@ -385,10 +374,6 @@ func (s *PlayerService) GetPreferences() *data.AppConfig {
 
 func (s *PlayerService) SavePreferences(settings map[string]any) {
 	s.log.Debug("SavePreferences: started", "settings", settings)
-	if s.store == nil {
-		s.log.Debug("SavePreferences: finished")
-		return
-	}
 	s.store.UpdateSettings(settings)
 	s.log.Debug("SavePreferences: finished")
 }

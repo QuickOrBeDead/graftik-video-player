@@ -40,21 +40,36 @@ type App struct {
 	log             graftikLogger.Logger
 }
 
-func NewApp(log graftikLogger.Logger) *App {
+func NewApp(log graftikLogger.Logger) (*App, error) {
 	userDataDir, err := os.UserConfigDir()
 	appDataDir := ""
 	if err == nil {
 		appDataDir = filepath.Join(userDataDir, "graftik-video-player")
 	}
 
+	if err := os.MkdirAll(appDataDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create app data dir: %w", err)
+	}
+
+	dbPath := filepath.Join(appDataDir, "player.db")
+
+	store, err := data.NewPlayerDataStore(appDataDir, dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create player data store: %w", err)
+	}
+
+	thumbnailStore := data.NewThumbnailDataStore(appDataDir)
+
 	pluginsDir := filepath.Join(appDataDir, "plugins")
 
 	return &App{
-		Service:       internal.NewPlayerService(nil, nil, log),
-		pluginManager: plugin.NewManager(pluginsDir),
-		pluginsDir:    pluginsDir,
-		log:           log,
-	}
+		Service:        internal.NewPlayerService(store, thumbnailStore, log),
+		store:          store,
+		thumbnailStore: thumbnailStore,
+		pluginManager:  plugin.NewManager(pluginsDir),
+		pluginsDir:     pluginsDir,
+		log:            log,
+	}, nil
 }
 
 func (a *App) Logger() graftikLogger.Logger {
@@ -81,14 +96,6 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
-	dbPath := filepath.Join(appDataDir, "player.db")
-
-	a.store, err = data.NewPlayerDataStore(appDataDir, dbPath)
-	if err != nil {
-		a.log.Error("failed to initialize data store", "error", err)
-		return
-	}
-
 	if err := a.store.Initialize(); err != nil {
 		a.log.Error("failed to run migrations", "error", err)
 		return
@@ -99,27 +106,25 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
-	a.thumbnailStore = data.NewThumbnailDataStore(appDataDir)
-
 	// Apply log config from preferences if available
-	if prefs := a.store.GetPreferences(); prefs != nil {
+	if preferences := a.store.GetPreferences(); preferences != nil {
 		level := graftikLogger.LevelDebug
-		if prefs.LogLevel != "" {
-			level = graftikLogger.ParseLevel(prefs.LogLevel)
+		if preferences.LogLevel != "" {
+			level = graftikLogger.ParseLevel(preferences.LogLevel)
 		}
-		if !prefs.Debug {
+		if !preferences.Debug {
 			level = graftikLogger.LevelInfo
 		}
 		a.log.(*graftikLogger.DefaultLogger).SetLevel(level)
 
-		if prefs.LogToFile {
+		if preferences.LogToFile {
 			logPath := filepath.Join(appDataDir, "logs", "app.log")
 			if err := a.log.(*graftikLogger.DefaultLogger).AddFileHandler(logPath); err != nil {
 				a.log.Warn("failed to enable file logging", "path", logPath, "error", err)
 			}
 		}
 
-		if w, h := prefs.WindowWidth, prefs.WindowHeight; w > 0 && h > 0 {
+		if w, h := preferences.WindowWidth, preferences.WindowHeight; w > 0 && h > 0 {
 			wailsRuntime.WindowSetSize(ctx, w, h)
 		}
 	}
@@ -149,8 +154,6 @@ func (a *App) startup(ctx context.Context) {
 	hlsDir := filepath.Join(os.TempDir(), "graftik-hls")
 	a.hlsEngine = hls.NewEngine(ffmpegPath, hlsDir)
 
-	a.Service.SetStore(a.store)
-	a.Service.SetThumbnailStore(a.thumbnailStore)
 	a.Service.SetContext(ctx)
 	a.Service.SetFFmpegPaths(ffmpegPath, ffprobePath)
 	a.Service.SetHlsEngine(a.hlsEngine)

@@ -41,9 +41,13 @@ func main() {
 		LogDir:    logDir,
 	})
 
-	app := NewApp(log)
+	app, err := NewApp(log)
+	if err != nil {
+		log.Error("failed to initialize app", "error", err)
+		return
+	}
 
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:     "Graftik Video Player",
 		Width:     1000,
 		Height:    670,
