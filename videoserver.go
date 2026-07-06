@@ -10,10 +10,9 @@ import (
 )
 
 type VideoServer struct {
-	mux      *http.ServeMux
-	listener net.Listener
-	port     int
-	log      graftikLogger.Logger
+	mux  *http.ServeMux
+	port int
+	log  graftikLogger.Logger
 }
 
 func NewVideoServer(log graftikLogger.Logger) (*VideoServer, error) {
@@ -59,7 +58,6 @@ func NewVideoServer(log graftikLogger.Logger) (*VideoServer, error) {
 	}
 
 	vs.port = listener.Addr().(*net.TCPAddr).Port
-	vs.listener = listener
 	go http.Serve(listener, vs.mux)
 
 	return vs, nil

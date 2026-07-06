@@ -74,10 +74,12 @@ func (s *PlayerService) FFmpegPath() string {
 func (s *PlayerService) GetCurrentPlaylist() *data.PlaylistDto {
 	playlistID := s.store.GetCurrentPlaylistID()
 	if playlistID == "" {
+		s.log.Debug("GetCurrentPlaylist: no current playlist set")
 		return nil
 	}
 	playlist, err := s.store.GetPlaylistByID(playlistID)
 	if err != nil || playlist == nil {
+		s.log.Error("GetCurrentPlaylist: failed", "playlistID", playlistID, "error", err)
 		return nil
 	}
 	return playlist
@@ -86,6 +88,7 @@ func (s *PlayerService) GetCurrentPlaylist() *data.PlaylistDto {
 func (s *PlayerService) GetPlaylists() []data.PlaylistListItem {
 	items, err := s.store.GetPlaylists()
 	if err != nil {
+		s.log.Error("GetPlaylists: failed", "error", err)
 		return nil
 	}
 	return items
@@ -93,10 +96,12 @@ func (s *PlayerService) GetPlaylists() []data.PlaylistListItem {
 
 func (s *PlayerService) SelectPlaylist(id string) {
 	if err := s.store.SetCurrentPlaylistID(id); err != nil {
+		s.log.Error("SelectPlaylist: SetCurrentPlaylistID failed", "id", id, "error", err)
 		return
 	}
 	playlist, err := s.store.GetPlaylistByID(id)
 	if err != nil {
+		s.log.Error("SelectPlaylist: GetPlaylistByID failed", "id", id, "error", err)
 		return
 	}
 	s.emitEvent("load-current-playlist", playlist)
@@ -105,6 +110,7 @@ func (s *PlayerService) SelectPlaylist(id string) {
 func (s *PlayerService) AddPlaylist(name string) {
 	playlist, err := s.store.AddPlaylist(name)
 	if err != nil {
+		s.log.Error("AddPlaylist: AddPlaylist failed", "name", name, "error", err)
 		return
 	}
 	if playlist != nil && playlist.ID != "" {
@@ -141,6 +147,7 @@ func (s *PlayerService) DeletePlaylistItem(id string) {
 func (s *PlayerService) GetPlaylist(id string) *data.PlaylistDto {
 	playlist, err := s.store.GetPlaylistByID(id)
 	if err != nil {
+		s.log.Error("GetPlaylist: failed", "id", id, "error", err)
 		return nil
 	}
 	return playlist
@@ -149,6 +156,7 @@ func (s *PlayerService) GetPlaylist(id string) *data.PlaylistDto {
 func (s *PlayerService) GetPlaylistName(id string) string {
 	name, err := s.store.GetPlaylistName(id)
 	if err != nil {
+		s.log.Error("GetPlaylistName: failed", "id", id, "error", err)
 		return ""
 	}
 	return name
@@ -159,7 +167,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 
 	stats, err := os.Stat(videoPath)
 	if err != nil {
-		s.log.Debug("GetPlaylistItemVideoMetadata: file stat failed", "path", videoPath, "error", err)
+		s.log.Error("GetPlaylistItemVideoMetadata: file stat failed", "path", videoPath, "error", err)
 		return nil
 	}
 	lastModified := float64(stats.ModTime().UnixMilli())
@@ -231,7 +239,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 
 	imageData, err := os.ReadFile(tempFile)
 	if err != nil {
-		s.log.Debug("GetPlaylistItemVideoMetadata: failed to read temp thumbnail", "tempFile", tempFile, "error", err)
+		s.log.Error("GetPlaylistItemVideoMetadata: failed to read temp thumbnail", "tempFile", tempFile, "error", err)
 		return &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
@@ -279,7 +287,7 @@ func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
 
 	info, err := media.Probe(s.ffprobePath, videoPath)
 	if err != nil {
-		s.log.Debug("GetStreamInfo: media probe failed, falling back to SW transcode", "path", videoPath, "error", err)
+		s.log.Error("GetStreamInfo: media probe failed, falling back to SW transcode", "path", videoPath, "error", err)
 		return &data.StreamInfo{
 			Action:      "sw_transcode",
 			ActionLabel: "SW Transcode",
@@ -349,7 +357,7 @@ func (s *PlayerService) probeDuration(videoPath string) float64 {
 		if stderr == "" {
 			stderr = err.Error()
 		}
-		s.log.Warn("ffprobe duration probe failed", "path", videoPath, "error", err)
+		s.log.Error("ffprobe duration probe failed", "path", videoPath, "error", err)
 		return 0
 	}
 
@@ -359,11 +367,13 @@ func (s *PlayerService) probeDuration(videoPath string) float64 {
 		} `json:"format"`
 	}{}
 	if err := json.Unmarshal(output, &format); err != nil {
+		s.log.Error("probeDuration: json unmarshal failed", "path", videoPath, "output", string(output))
 		return 0
 	}
 
 	var duration float64
 	if _, err := fmt.Sscanf(format.Format.Duration, "%f", &duration); err != nil {
+		s.log.Error("probeDuration: failed to parse duration", "path", videoPath, "durationStr", format.Format.Duration)
 		return 0
 	}
 	return math.Round(duration*100) / 100
@@ -371,6 +381,7 @@ func (s *PlayerService) probeDuration(videoPath string) float64 {
 
 func (s *PlayerService) emitEvent(event string, data ...any) {
 	if s.ctx == nil {
+		s.log.Error("emitEvent: context is nil", "event", event)
 		return
 	}
 	if len(data) > 0 {

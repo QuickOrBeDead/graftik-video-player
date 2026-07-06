@@ -24,7 +24,8 @@ var appIcon []byte
 
 var readyToClose = make(chan bool)
 
-func (*App) SetReadyToClose() {
+func (app *App) SetReadyToClose() {
+	app.log.Debug("App: SetReadyToClose is called")
 	readyToClose <- true
 }
 
@@ -69,8 +70,11 @@ func main() {
 			Icon:                appIcon,
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
+			log.Debug("Main: Wails app on before close: start emit before-app-close event")
 			wailsRuntime.EventsEmit(ctx, "before-app-close")
+			log.Debug("Main: Wails app on before close: emit before-app-close event finished")
 			<-readyToClose
+			log.Debug("Main: Wails app on before close: readyToClose signal received. Closing app.")
 			return false
 		},
 	})
