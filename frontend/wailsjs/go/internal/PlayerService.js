@@ -78,22 +78,6 @@ export function SetContext(arg1) {
   return window['go']['internal']['PlayerService']['SetContext'](arg1);
 }
 
-export function SetFFmpegPaths(arg1, arg2) {
-  return window['go']['internal']['PlayerService']['SetFFmpegPaths'](arg1, arg2);
-}
-
-export function SetHlsEngine(arg1) {
-  return window['go']['internal']['PlayerService']['SetHlsEngine'](arg1);
-}
-
-export function SetStore(arg1) {
-  return window['go']['internal']['PlayerService']['SetStore'](arg1);
-}
-
-export function SetThumbnailStore(arg1) {
-  return window['go']['internal']['PlayerService']['SetThumbnailStore'](arg1);
-}
-
 export function UpdatePlaylist(arg1, arg2) {
   return window['go']['internal']['PlayerService']['UpdatePlaylist'](arg1, arg2);
 }

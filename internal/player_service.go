@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"time"
 
 	"graftik-wails/internal/data"
@@ -291,7 +292,16 @@ func (s *PlayerService) RebalancePlaylistOrder(id string) {
 
 func (s *PlayerService) OpenContainingFolder(filePath string) {
 	s.log.Debug("OpenContainingFolder: started", "filePath", filePath)
-	exec.Command("explorer", "/select,", filePath).Start()
+
+	switch goruntime.GOOS {
+	case "windows":
+		exec.Command("explorer", "/select,", filePath).Start()
+	case "darwin":
+		exec.Command("open", "-R", filePath).Start()
+	default:
+		exec.Command("xdg-open", filepath.Dir(filePath)).Start()
+	}
+
 	s.log.Debug("OpenContainingFolder: finished")
 }
 

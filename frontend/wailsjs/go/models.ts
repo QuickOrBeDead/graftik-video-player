@@ -40,18 +40,6 @@ export namespace data {
 	        this.logToFile = source["logToFile"];
 	    }
 	}
-	export class PlayerDataStore {
-	
-	
-	    static createFrom(source: any = {}) {
-	        return new PlayerDataStore(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	
-	    }
-	}
 	export class PlaylistItemDto {
 	    id: string;
 	    playlistId: string;
@@ -181,18 +169,6 @@ export namespace data {
 	        this.streamId = source["streamId"];
 	    }
 	}
-	export class ThumbnailDataStore {
-	
-	
-	    static createFrom(source: any = {}) {
-	        return new ThumbnailDataStore(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	
-	    }
-	}
 	export class VideoMetadata {
 	    duration: number;
 	    lastModified: number;
@@ -209,23 +185,6 @@ export namespace data {
 	        this.lastModified = source["lastModified"];
 	        this.fileSize = source["fileSize"];
 	        this.thumbnail = source["thumbnail"];
-	    }
-	}
-
-}
-
-export namespace hls {
-	
-	export class Engine {
-	
-	
-	    static createFrom(source: any = {}) {
-	        return new Engine(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	
 	    }
 	}
 
