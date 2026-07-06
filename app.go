@@ -60,12 +60,26 @@ func NewApp(log graftikLogger.Logger) (*App, error) {
 
 	thumbnailStore := data.NewThumbnailDataStore(appDataDir)
 
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+
+	ffmpegDir := findFFmpegDir()
+	ffmpegPath := filepath.Join(ffmpegDir, "ffmpeg"+ext)
+	ffprobePath := filepath.Join(ffmpegDir, "ffprobe"+ext)
+
+	hlsDir := filepath.Join(os.TempDir(), "graftik-hls")
+	hlsEngine := hls.NewEngine(ffmpegPath, hlsDir)
+
 	pluginsDir := filepath.Join(appDataDir, "plugins")
 
 	return &App{
-		Service:        internal.NewPlayerService(store, thumbnailStore, log),
+		Service:        internal.NewPlayerService(store, thumbnailStore, hlsEngine, ffmpegPath, ffprobePath, log),
 		store:          store,
 		thumbnailStore: thumbnailStore,
+		ffmpegDir:      ffmpegDir,
+		hlsEngine:      hlsEngine,
 		pluginManager:  plugin.NewManager(pluginsDir),
 		pluginsDir:     pluginsDir,
 		log:            log,
@@ -138,25 +152,7 @@ func (a *App) startup(ctx context.Context) {
 		a.log.Debug("App startup: video server started", "port", a.videoServer.Port())
 	}
 
-	ext := ""
-	if runtime.GOOS == "windows" {
-		ext = ".exe"
-	}
-
-	// Locate ffmpeg/ffprobe - first check bundled, then PATH
-	a.ffmpegDir = a.findFFmpegDir()
-	ffmpegPath := filepath.Join(a.ffmpegDir, "ffmpeg"+ext)
-	ffprobePath := filepath.Join(a.ffmpegDir, "ffprobe"+ext)
-
-	a.log.Debug("App startup: ffmpeg paths", "ffmpeg", ffmpegPath, "ffprobe", ffprobePath)
-
-	// Init HLS engine
-	hlsDir := filepath.Join(os.TempDir(), "graftik-hls")
-	a.hlsEngine = hls.NewEngine(ffmpegPath, hlsDir)
-
 	a.Service.SetContext(ctx)
-	a.Service.SetFFmpegPaths(ffmpegPath, ffprobePath)
-	a.Service.SetHlsEngine(a.hlsEngine)
 
 	// Register HLS routes on video server
 	if a.videoServer != nil {
@@ -484,7 +480,7 @@ func (a *App) InstallPluginFromURL(url string) (*plugin.PluginInfo, error) {
 	return info, nil
 }
 
-func (a *App) findFFmpegDir() string {
+func findFFmpegDir() string {
 	exeDir, err := os.Executable()
 	if err == nil {
 		appDir := filepath.Dir(exeDir)

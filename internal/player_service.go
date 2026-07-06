@@ -31,7 +31,7 @@ type PlayerService struct {
 	log            graftikLogger.Logger
 }
 
-func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.ThumbnailDataStore, log graftikLogger.Logger) *PlayerService {
+func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.ThumbnailDataStore, hlsEngine *hls.Engine, ffmpegPath, ffprobePath string, log graftikLogger.Logger) *PlayerService {
 	if log == nil {
 		panic("logger must not be nil")
 	}
@@ -41,25 +41,15 @@ func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.Thumbnai
 	return &PlayerService{
 		store:          store,
 		thumbnailStore: thumbnailStore,
+		hlsEngine:      hlsEngine,
+		ffmpegPath:     ffmpegPath,
+		ffprobePath:    ffprobePath,
 		log:            log,
 	}
 }
 
 func (s *PlayerService) SetContext(ctx context.Context) {
 	s.ctx = ctx
-}
-
-func (s *PlayerService) SetThumbnailStore(ts *data.ThumbnailDataStore) {
-	s.thumbnailStore = ts
-}
-
-func (s *PlayerService) SetFFmpegPaths(ffmpegPath, ffprobePath string) {
-	s.ffmpegPath = ffmpegPath
-	s.ffprobePath = ffprobePath
-}
-
-func (s *PlayerService) SetHlsEngine(engine *hls.Engine) {
-	s.hlsEngine = engine
 }
 
 func (s *PlayerService) FFprobePath() string {
