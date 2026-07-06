@@ -35,7 +35,7 @@ updatePlaylistCurrentItemIntervalId = setInterval(
 
 window.runtime.EventsOn('before-app-close', async () => {
   logger.debug('[SAVE:BEFORE-CLOSE] Performing final playlist item save')
-  await updatePlaylistItem()
+  await updatePlaylistItem(true)
   await window.go.main.App.SetReadyToClose()
 })
 
@@ -50,7 +50,7 @@ window.onbeforeunload = () => {
   }
 }
 
-const updatePlaylistItem = async () => {
+const updatePlaylistItem = async (closing?: boolean) => {
   if (!playlistState.currentItem) {
     logger.debug('[SAVE:ITEM-SKIP] updatePlaylistItem skipped — no currentItem')
     return
@@ -66,7 +66,15 @@ const updatePlaylistItem = async () => {
       last_watched: Date.now()
     }
   } else {
-    data = { is_playing: false }
+    if (closing) {
+      data = {
+        elapsed_time: playerState.currentTime,
+        duration: playerState.duration,
+        progress_percent: progressPercent.value
+      }
+    } else {
+      data = { is_playing: false }
+    }
   }
 
   logger.debug('[SAVE:ITEM] Saving playlist item data via UpdatePlaylistItem:', { itemId: playlistState.currentItem, data })
