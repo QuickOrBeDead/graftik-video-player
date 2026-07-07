@@ -6,28 +6,36 @@ import (
 	"strings"
 
 	_ "modernc.org/sqlite"
+	graftikLogger "graftik-wails/internal/logger"
 )
 
 type PlayerRepository struct {
-	db *sql.DB
+	db  *sql.DB
+	log graftikLogger.Logger
 }
 
-func NewPlayerRepository(dbPath string) (*PlayerRepository, error) {
+func NewPlayerRepository(dbPath string, log graftikLogger.Logger) (*PlayerRepository, error) {
+	if log == nil {
+		panic("data: logger is required")
+	}
+	log.Debug("repo: opening database", "dbPath", dbPath)
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	db.SetMaxOpenConns(1)
-
-	return &PlayerRepository{db: db}, nil
+	log.Debug("repo: database opened", "dbPath", dbPath)
+	return &PlayerRepository{db: db, log: log}, nil
 }
 
 func (r *PlayerRepository) InitializeDB() error {
-	return RunMigrations(r.db)
+	r.log.Debug("repo: initializing database")
+	return RunMigrations(r.db, r.log)
 }
 
 func (r *PlayerRepository) Close() error {
+	r.log.Debug("repo: closing database connection")
 	if r.db == nil {
 		return nil
 	}
@@ -36,6 +44,7 @@ func (r *PlayerRepository) Close() error {
 }
 
 func (r *PlayerRepository) GetPlaylist(id string) (*PlaylistDto, error) {
+	r.log.Debug("repo: getting playlist", "id", id)
 	// Get playlist
 	row := r.db.QueryRow(`SELECT id, name, shuffle, repeat, current_item, current_volume FROM playlists WHERE id = ?`, id)
 	var p PlaylistDto
@@ -82,6 +91,7 @@ func (r *PlayerRepository) GetPlaylist(id string) (*PlaylistDto, error) {
 }
 
 func (r *PlayerRepository) getPlaylistItems(playlistID string) ([]PlaylistItemDto, error) {
+	r.log.Debug("repo: getting playlist items", "playlistID", playlistID)
 	rows, err := r.db.Query(`
 		SELECT id, playlist_id, path, title, is_playing, elapsed_time, duration, progress_percent, last_watched, order_index
 		FROM playlist_items
@@ -124,6 +134,7 @@ func (r *PlayerRepository) getPlaylistItems(playlistID string) ([]PlaylistItemDt
 }
 
 func (r *PlayerRepository) GetPlaylistProjection(id string, columns []string) (map[string]any, error) {
+	r.log.Debug("repo: getting playlist projection", "id", id, "columns", columns)
 	query := fmt.Sprintf("SELECT %s FROM playlists WHERE id = ?", strings.Join(columns, ", "))
 	row := r.db.QueryRow(query, id)
 
@@ -148,6 +159,7 @@ func (r *PlayerRepository) GetPlaylistProjection(id string, columns []string) (m
 }
 
 func (r *PlayerRepository) GetPlaylistItemByID(id string) *PlaylistItemDto {
+	r.log.Debug("repo: getting playlist item by id", "id", id)
 	row := r.db.QueryRow(`SELECT id, playlist_id, path, title, is_playing, elapsed_time, duration, progress_percent, last_watched, order_index FROM playlist_items WHERE id = ?`, id)
 	var item PlaylistItemDto
 	var isPlaying int
@@ -176,6 +188,7 @@ func (r *PlayerRepository) GetPlaylistItemByID(id string) *PlaylistItemDto {
 }
 
 func (r *PlayerRepository) GetPlaylists() ([]PlaylistListItem, error) {
+	r.log.Debug("repo: getting all playlists")
 	rows, err := r.db.Query("SELECT id, name FROM playlists ORDER BY name ASC")
 	if err != nil {
 		return nil, fmt.Errorf("failed to query playlists: %w", err)
@@ -194,6 +207,7 @@ func (r *PlayerRepository) GetPlaylists() ([]PlaylistListItem, error) {
 }
 
 func (r *PlayerRepository) HasAnyPlaylist() (bool, error) {
+	r.log.Debug("repo: checking if any playlist exists")
 	var count int
 	err := r.db.QueryRow("SELECT COUNT(*) FROM playlists").Scan(&count)
 	if err != nil {
@@ -203,11 +217,13 @@ func (r *PlayerRepository) HasAnyPlaylist() (bool, error) {
 }
 
 func (r *PlayerRepository) AddPlaylist(id, name string) error {
+	r.log.Debug("repo: adding playlist", "id", id, "name", name)
 	_, err := r.db.Exec("INSERT INTO playlists (id, name) VALUES (?, ?)", id, name)
 	return err
 }
 
 func (r *PlayerRepository) updateRecord(table, id string, data map[string]any) error {
+	r.log.Debug("repo: updating record", "table", table, "id", id)
 	if len(data) == 0 {
 		return nil
 	}
@@ -226,10 +242,12 @@ func (r *PlayerRepository) updateRecord(table, id string, data map[string]any) e
 }
 
 func (r *PlayerRepository) UpdatePlaylist(id string, data map[string]any) error {
+	r.log.Debug("repo: updating playlist", "id", id)
 	return r.updateRecord("playlists", id, data)
 }
 
 func (r *PlayerRepository) DeletePlaylist(id string) error {
+	r.log.Debug("repo: deleting playlist", "id", id)
 	_, err := r.db.Exec("DELETE FROM playlists WHERE id = ?", id)
 	return err
 }
@@ -241,6 +259,7 @@ func (r *PlayerRepository) AddPlaylistItems(items []struct {
 	Title      string
 	OrderIndex float64
 }) error {
+	r.log.Debug("repo: adding playlist items", "count", len(items))
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -263,15 +282,18 @@ func (r *PlayerRepository) AddPlaylistItems(items []struct {
 }
 
 func (r *PlayerRepository) UpdatePlaylistItem(id string, data map[string]any) error {
+	r.log.Debug("repo: updating playlist item", "id", id)
 	return r.updateRecord("playlist_items", id, data)
 }
 
 func (r *PlayerRepository) DeletePlaylistItem(id string) error {
+	r.log.Debug("repo: deleting playlist item", "id", id)
 	_, err := r.db.Exec("DELETE FROM playlist_items WHERE id = ?", id)
 	return err
 }
 
 func (r *PlayerRepository) rebalancePlaylistOrder(playlistID string) error {
+	r.log.Debug("repo: rebalancing playlist order", "playlistID", playlistID)
 	_, err := r.db.Exec(`
 		WITH reordered AS (
 			SELECT id, ROW_NUMBER() OVER (ORDER BY order_index) AS pos

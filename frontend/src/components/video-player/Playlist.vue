@@ -67,6 +67,7 @@ watch(
 
 window.runtime.EventsOn('add-playlist-item', async (items: unknown) => {
   const itemsTyped = items as PlaylistItemDto[]
+  logger.debug('Playlist: add-playlist-item event', { count: itemsTyped.length })
   setNewPlaylistItemsOrderIndexes(itemsTyped)
 
   await window.go.internal.PlayerService.AddPlaylistItems(itemsTyped)
@@ -77,6 +78,7 @@ window.runtime.EventsOn('add-playlist-item', async (items: unknown) => {
 })
 
 const loadVideoMetadata = (i: PlaylistItem) => {
+  logger.debug('Playlist: loading video metadata', { id: i.id, path: i.path })
   loadVideoMetadataPLimit(() => getVideoMetadata(playlistState.id, i.id, i.path))
     .then(data => {
       i.thumbnailImage = data.thumbnail
@@ -103,6 +105,7 @@ const getStreamInfo = async (videoPath: string): Promise<StreamInfo | undefined>
 }
 
 const playItem = async (item: PlaylistItem) => {
+  logger.debug('Playlist: play item', { id: item.id, title: item.title })
   emit("beforePlaylistItemChange")
 
   const restartTime = item.progressPercent !== undefined && item.progressPercent >= 100 ? 0 : (item.elapsedTime ?? 0)
@@ -129,6 +132,7 @@ const hideDeletePlaylistItemModal = () => {
 
 const deleteItem = async () => {
   if (currentPlaylistItem.value) {
+    logger.debug('Playlist: deleting item', { id: currentPlaylistItem.value.id, title: currentPlaylistItem.value.title })
     await window.go.internal.PlayerService.DeletePlaylistItem(currentPlaylistItem.value.id)
     deletePlaylistItem(currentPlaylistItem.value.id)
   }
@@ -182,6 +186,7 @@ const showContextMenu = (e: MouseEvent, item: PlaylistItem) => {
 const updatePlaylistItemOrder = async (event: { moved: { element: PlaylistItem; newIndex: number, oldIndex: number } }) => {
   if (event.moved) {
     const { element, newIndex, oldIndex } = event.moved
+    logger.debug('Playlist: update item order', { elementId: element.id, oldIndex, newIndex })
     const { rebalanceOrder } = setPlaylistItemNewOrder(element, oldIndex, newIndex)
 
     await window.go.internal.PlayerService.UpdatePlaylistItem(element.id, { order_index: element.orderIndex })

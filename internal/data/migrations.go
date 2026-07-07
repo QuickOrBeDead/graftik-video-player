@@ -7,12 +7,16 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	graftikLogger "graftik-wails/internal/logger"
 )
 
 //go:embed migrations/*.sql
 var migrationFiles embed.FS
 
-func RunMigrations(db *sql.DB) error {
+func RunMigrations(db *sql.DB, log graftikLogger.Logger) error {
+	log.Debug("migrations: running database migrations")
+
 	entries, err := migrationFiles.ReadDir("migrations")
 	if err != nil {
 		return fmt.Errorf("failed to read migrations dir: %w", err)
@@ -23,6 +27,7 @@ func RunMigrations(db *sql.DB) error {
 	})
 
 	for _, entry := range entries {
+		log.Debug("migrations: applying", "file", entry.Name())
 		if filepath.Ext(entry.Name()) != ".sql" {
 			continue
 		}

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	graftikLogger "graftik-wails/internal/logger"
 )
 
 type Instance struct {
@@ -30,26 +32,27 @@ type Manager struct {
 	luaPlugins map[string]*LuaPlugin
 	pluginsDir string
 	httpClient *http.Client
-	logFn      func(format string, args ...any)
+	log        graftikLogger.Logger
 }
 
-func NewManager(pluginsDir string) *Manager {
+func NewManager(pluginsDir string, log graftikLogger.Logger) *Manager {
+	if log == nil {
+		panic("plugin: logger is required")
+	}
 	return &Manager{
 		instances:  make(map[string]*Instance),
 		luaPlugins: make(map[string]*LuaPlugin),
 		pluginsDir: pluginsDir,
 		httpClient: &http.Client{Timeout: 5 * time.Second},
-		logFn:      func(format string, args ...any) { fmt.Printf(format, args...) },
+		log:        log,
 	}
-}
-
-func (m *Manager) SetLogFn(fn func(format string, args ...any)) {
-	m.logFn = fn
 }
 
 func (m *Manager) Discover(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	m.log.Debug("plugin: discovering plugins", "dir", m.pluginsDir)
 
 	if err := os.MkdirAll(m.pluginsDir, 0755); err != nil {
 		return fmt.Errorf("create plugins dir: %w", err)
@@ -59,6 +62,8 @@ func (m *Manager) Discover(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("read plugins dir: %w", err)
 	}
+
+	m.log.Debug("plugin: scanned entries", "count", len(entries))
 
 	for _, entry := range entries {
 		if !entry.IsDir() {
@@ -71,7 +76,7 @@ func (m *Manager) Discover(ctx context.Context) error {
 		}
 
 		if err := m.loadLuaPluginDir(entry.Name()); err != nil {
-			m.logFn("plugin: %v\n", err)
+			m.log.Error("plugin: load error", "dir", entry.Name(), "err", err)
 		}
 	}
 
@@ -79,6 +84,7 @@ func (m *Manager) Discover(ctx context.Context) error {
 }
 
 func (m *Manager) loadLuaPluginDir(dirName string) error {
+	m.log.Debug("plugin: loading lua plugin dir", "dir", dirName)
 	dir := filepath.Join(m.pluginsDir, dirName)
 
 	cfgPath := filepath.Join(dir, "plugin.json")
@@ -97,22 +103,24 @@ func (m *Manager) loadLuaPluginDir(dirName string) error {
 
 	if cfg.Type != "lua" {
 		if cfg.Command != "" {
-			m.logFn("plugin: skipped %s (exec plugins not supported, use type: lua)\n", cfg.Name)
+			m.log.Info("plugin: skipped", "name", cfg.Name)
 		}
 		return nil
 	}
 
-	p, err := LoadLuaPlugin(dir)
+	p, err := LoadLuaPlugin(dir, m.log)
 	if err != nil {
 		return fmt.Errorf("load lua %s: %v", cfg.Name, err)
 	}
 
 	m.luaPlugins[p.Manifest.ID] = p
-	m.logFn("plugin: loaded %s v%s\n", p.Manifest.Name, p.Manifest.Version)
+	m.log.Info("plugin: loaded", "name", p.Manifest.Name, "version", p.Manifest.Version)
 	return nil
 }
 
 func (m *Manager) InstallPlugin(zipData []byte) (*PluginInfo, error) {
+	m.log.Debug("plugin: installing plugin", "bytes", len(zipData))
+
 	if err := os.MkdirAll(m.pluginsDir, 0755); err != nil {
 		return nil, fmt.Errorf("create plugins dir: %w", err)
 	}
@@ -200,7 +208,7 @@ func (m *Manager) InstallPlugin(zipData []byte) (*PluginInfo, error) {
 		return nil, fmt.Errorf("move plugin dir: %w", err)
 	}
 
-	p, err := LoadLuaPlugin(targetDir)
+	p, err := LoadLuaPlugin(targetDir, m.log)
 	if err != nil {
 		return nil, fmt.Errorf("load plugin: %w", err)
 	}
@@ -218,11 +226,12 @@ func (m *Manager) InstallPlugin(zipData []byte) (*PluginInfo, error) {
 		UI:      p.Manifest.UI,
 	}
 
-	m.logFn("plugin: installed %s v%s\n", p.Manifest.Name, p.Manifest.Version)
+	m.log.Info("plugin: installed", "name", p.Manifest.Name, "version", p.Manifest.Version)
 	return info, nil
 }
 
 func (m *Manager) RemovePlugin(pluginID string) error {
+	m.log.Debug("plugin: removing plugin", "id", pluginID)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -239,11 +248,12 @@ func (m *Manager) RemovePlugin(pluginID string) error {
 		return fmt.Errorf("remove plugin dir: %w", err)
 	}
 
-	m.logFn("plugin: removed %s\n", pluginID)
+	m.log.Info("plugin: removed", "id", pluginID)
 	return nil
 }
 
 func (m *Manager) ExecuteAction(pluginID, action, argsJSON string) error {
+	m.log.Debug("plugin: executing action", "action", action, "pluginID", pluginID)
 	m.mu.RLock()
 	p, ok := m.luaPlugins[pluginID]
 	m.mu.RUnlock()
@@ -256,7 +266,9 @@ func (m *Manager) ExecuteAction(pluginID, action, argsJSON string) error {
 			return fmt.Errorf("invalid args JSON: %w", err)
 		}
 	}
-	return p.ExecuteAction(action, args)
+	err := p.ExecuteAction(action, args)
+	m.log.Debug("plugin: action completed", "action", action, "pluginID", pluginID, "err", err)
+	return err
 }
 
 func (m *Manager) Plugins() []PluginInfo {
@@ -296,10 +308,12 @@ func (m *Manager) Plugins() []PluginInfo {
 }
 
 func (m *Manager) Shutdown() {
+	m.log.Debug("plugin: shutting down manager")
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	for id, inst := range m.instances {
+		m.log.Debug("plugin: stopping instance", "id", id)
 		if inst.cancel != nil {
 			inst.cancel()
 		}
@@ -339,12 +353,13 @@ func (m *Manager) LaunchExecPlugins(ctx context.Context, hostPort int) {
 			continue
 		}
 		if err := m.launch(ctx, &cfg, hostPort); err != nil {
-			m.logFn("plugin: launch %s: %v\n", cfg.Name, err)
+			m.log.Info("plugin: launch failed", "name", cfg.Name, "err", err)
 		}
 	}
 }
 
 func (m *Manager) launch(ctx context.Context, cfg *DiscoveryConfig, hostPort int) error {
+	m.log.Debug("plugin: launching", "id", cfg.ID, "command", cfg.Command)
 	dir := filepath.Join(m.pluginsDir, cfg.ID)
 	exePath := filepath.Join(dir, cfg.Command)
 
@@ -406,7 +421,7 @@ func (m *Manager) launch(ctx context.Context, cfg *DiscoveryConfig, hostPort int
 	m.instances[manifest.ID] = inst
 	m.mu.Unlock()
 
-	m.logFn("plugin: launched %s v%s (port %d)\n", manifest.Name, manifest.Version, port)
+	m.log.Info("plugin: launched", "name", manifest.Name, "version", manifest.Version, "port", port)
 	return nil
 }
 

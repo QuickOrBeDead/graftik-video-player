@@ -30,14 +30,18 @@ type PlayerService struct {
 	ffmpegPath     string
 	hlsEngine      *hls.Engine
 	log            graftikLogger.Logger
+	prober         *media.Prober
 }
 
-func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.ThumbnailDataStore, hlsEngine *hls.Engine, ffmpegPath, ffprobePath string, log graftikLogger.Logger) *PlayerService {
+func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.ThumbnailDataStore, hlsEngine *hls.Engine, ffmpegPath, ffprobePath string, log graftikLogger.Logger, prober *media.Prober) *PlayerService {
 	if log == nil {
 		panic("logger must not be nil")
 	}
 	if store == nil {
 		panic("player data store must not be nil")
+	}
+	if prober == nil {
+		panic("prober must not be nil")
 	}
 	return &PlayerService{
 		store:          store,
@@ -46,6 +50,7 @@ func NewPlayerService(store *data.PlayerDataStore, thumbnailStore *data.Thumbnai
 		ffmpegPath:     ffmpegPath,
 		ffprobePath:    ffprobePath,
 		log:            log,
+		prober:         prober,
 	}
 }
 
@@ -324,7 +329,7 @@ func (s *PlayerService) InitNewPlaylistItems(filePaths []string) []data.Playlist
 func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
 	s.log.Debug("GetStreamInfo: started", "videoPath", videoPath)
 
-	info, err := media.Probe(s.ffprobePath, videoPath)
+	info, err := s.prober.Probe(s.ffprobePath, videoPath)
 	if err != nil {
 		s.log.Error("GetStreamInfo: media probe failed, falling back to SW transcode", "path", videoPath, "error", err)
 		info := &data.StreamInfo{
@@ -338,7 +343,7 @@ func (s *PlayerService) GetStreamInfo(videoPath string) *data.StreamInfo {
 	s.log.Debug("GetStreamInfo: media probe result", "path", videoPath, "action", info.Action, "actionLabel", info.ActionLabel)
 
 	if info.Action == "sw_transcode" && s.hlsEngine != nil {
-		hwEncoder := media.DetectHWEncoder(s.ffmpegPath)
+		hwEncoder := s.prober.DetectHWEncoder(s.ffmpegPath)
 		if hwEncoder != "" {
 			info.Action = "hw_transcode"
 			info.ActionLabel = hwEncoderShortLabel(hwEncoder)

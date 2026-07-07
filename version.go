@@ -52,6 +52,7 @@ func (a *App) GetReleaseYear() string {
 }
 
 func (a *App) CheckForUpdates() (*UpdateInfo, error) {
+	a.log.Debug("version: checking for updates", "currentVersion", appVersion)
 	var includePrerelease bool
 	if a.store != nil {
 		prefs := a.store.GetPreferences()
@@ -65,6 +66,7 @@ func (a *App) CheckForUpdates() (*UpdateInfo, error) {
 }
 
 func (a *App) checkForUpdatesStable() (*UpdateInfo, error) {
+	a.log.Debug("version: checking stable updates")
 	url := "https://api.github.com/repos/QuickOrBeDead/graftik-video-player/releases/latest"
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -84,10 +86,12 @@ func (a *App) checkForUpdatesStable() (*UpdateInfo, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotModified {
+		a.log.Debug("version: no update (not modified)")
 		return nil, nil
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
+		a.log.Debug("version: no update (not found)")
 		return nil, nil
 	}
 
@@ -106,6 +110,7 @@ func (a *App) checkForUpdatesStable() (*UpdateInfo, error) {
 }
 
 func (a *App) checkForUpdatesPrerelease() (*UpdateInfo, error) {
+	a.log.Debug("version: checking prerelease updates")
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	ext := ".deb"
@@ -180,8 +185,10 @@ func parseNextLink(link string) string {
 func (a *App) releaseToUpdateInfo(release *githubRelease) (*UpdateInfo, error) {
 	info := a.releaseToUpdateInfoOrNil(release)
 	if info != nil {
+		a.log.Debug("version: update available", "latest", info.LatestVersion)
 		return info, nil
 	}
+	a.log.Debug("version: no update needed")
 	return nil, nil
 }
 
@@ -192,7 +199,7 @@ func (a *App) releaseToUpdateInfoOrNil(release *githubRelease) *UpdateInfo {
 
 	latestVersion := strings.TrimPrefix(release.TagName, "v")
 
-	cmp := semverCompare(latestVersion, appVersion)
+	cmp := a.semverCompare(latestVersion, appVersion)
 	if cmp <= 0 {
 		return nil
 	}
@@ -225,6 +232,7 @@ func (a *App) releaseToUpdateInfoOrNil(release *githubRelease) *UpdateInfo {
 }
 
 func (a *App) DownloadUpdate(url string) (string, error) {
+	a.log.Debug("version: downloading update", "url", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -261,10 +269,12 @@ func (a *App) DownloadUpdate(url string) (string, error) {
 		return "", err
 	}
 
+	a.log.Debug("version: download complete", "path", tmpFile)
 	return tmpFile, nil
 }
 
 func (a *App) InstallUpdate(path string) error {
+	a.log.Debug("version: installing update", "path", path)
 	switch runtime.GOOS {
 	case "linux":
 		if _, err := exec.LookPath("pkexec"); err != nil {
@@ -287,14 +297,18 @@ func (a *App) InstallUpdate(path string) error {
 	}
 }
 
-func semverCompare(a, b string) int {
+func (app *App) semverCompare(a, b string) int {
 	va, err := semver.NewVersion(a)
 	if err != nil {
+		app.log.Error("version: failed to parse version a", "version", a, "error", err)
 		return 0
 	}
 	vb, err := semver.NewVersion(b)
 	if err != nil {
+		app.log.Error("version: failed to parse version b", "version", b, "error", err)
 		return 0
 	}
-	return va.Compare(vb)
+	cmp := va.Compare(vb)
+	app.log.Debug("version: semver compare result", "a", a, "b", b, "result", cmp)
+	return cmp
 }

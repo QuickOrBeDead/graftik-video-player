@@ -1,5 +1,6 @@
 import { computed, reactive } from "vue"
 import { Playlist, PlaylistItem, PlaylistSortInfo, PlaylistViewMode, RepeatMode } from "../types"
+import { logger } from '@renderer/utils/logger'
 
 const state = reactive<Playlist>({
   id: '',
@@ -23,6 +24,7 @@ function generateShuffledDeck(items: PlaylistItem[]): PlaylistItem[] {
 
 export function usePlaylist() {
   const setPlaylist = (data: Playlist) => {
+    logger.debug('setPlaylist', { id: data.id, name: data.name, itemCount: data.items?.length })
     const defaults = {
       viewMode: PlaylistViewMode.Detailed,
       sortInfo: PlaylistSortInfo.Default,
@@ -37,6 +39,7 @@ export function usePlaylist() {
   }
 
   const deletePlaylistItem = async (id: string) => {
+    logger.debug('deletePlaylistItem', id)
     state.items = state.items.filter(x => x.id !== id)
   }
 
@@ -78,6 +81,7 @@ export function usePlaylist() {
   }
 
   const filteredPlaylist = computed(() => {
+    logger.debug('filteredPlaylist: computing', { sortInfo: state.sortInfo, showOnlyUnwatched: state.showOnlyUnwatched })
     let list = [...state.items]
 
     if (state.showOnlyUnwatched) {
@@ -115,6 +119,7 @@ export function usePlaylist() {
   })
 
   const setNewPlaylistItemsOrderIndexes = (items: PlaylistItem[]) => {
+    logger.debug('setNewPlaylistItemsOrderIndexes', { count: items.length })
     let maxOrderIndex = state.items.length === 0 ? 0 : state.items[state.items.length - 1].orderIndex
     for (let i = 0; i < items.length; i++) {
       const item = items[i]
@@ -125,12 +130,14 @@ export function usePlaylist() {
   }
 
   const addNewPlaylistItems = (items: PlaylistItem[]) => {
+    logger.debug('addNewPlaylistItems', { count: items.length })
     for (let i = 0; i < items.length; i++) {
       state.items.push(items[i])
     }
   }
 
   const setPlaylistItemNewOrder = (element: PlaylistItem, oldIndex: number, newIndex: number): { rebalanceOrder: boolean } => {
+    logger.debug('setPlaylistItemNewOrder', { elementId: element.id, oldIndex, newIndex })
     const items = state.items
 
     // calculate index by Fractional Indexing. nexIndex = (prev + next) / 2
@@ -172,6 +179,7 @@ export function usePlaylist() {
   }
 
   const getNextPlaylistItem = (repeat: number, shuffle: boolean): PlaylistItem | null => {
+    logger.debug('getNextPlaylistItem', { repeat, shuffle, currentItem: state.currentItem })
     if (repeat === RepeatMode.One) {
       const currentItem = state.items.find(x => x.id === state.currentItem)
       return currentItem ?? null
@@ -208,6 +216,7 @@ export function usePlaylist() {
   }
 
   const getPreviousPlaylistItem = (repeat: number, shuffle: boolean): PlaylistItem | null => {
+    logger.debug('getPreviousPlaylistItem', { repeat, shuffle, currentItem: state.currentItem })
     if (repeat === RepeatMode.One) {
       const currentItem = state.items.find(x => x.id === state.currentItem)
       return currentItem ?? null
@@ -237,6 +246,7 @@ export function usePlaylist() {
   }
 
   const regenerateShuffledDeck = () => {
+    logger.debug('regenerateShuffledDeck', { itemCount: state.items.length })
     if (state.items.length > 0) {
       state.shuffledDeck = generateShuffledDeck(state.items)
     } else {

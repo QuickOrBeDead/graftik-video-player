@@ -7,7 +7,19 @@ import (
 	"strings"
 
 	"graftik-wails/internal/data"
+	graftikLogger "graftik-wails/internal/logger"
 )
+
+type Prober struct {
+	log graftikLogger.Logger
+}
+
+func NewProber(log graftikLogger.Logger) *Prober {
+	if log == nil {
+		panic("media: logger is required")
+	}
+	return &Prober{log: log}
+}
 
 type ffprobeOutput struct {
 	Streams []ffprobeStream `json:"streams"`
@@ -26,7 +38,9 @@ type ffprobeFormat struct {
 	Duration   string `json:"duration"`
 }
 
-func Probe(ffprobePath, videoPath string) (*data.StreamInfo, error) {
+func (p *Prober) Probe(ffprobePath, videoPath string) (*data.StreamInfo, error) {
+	p.log.Debug("media: probing file", "ffprobePath", ffprobePath, "videoPath", videoPath)
+
 	cmd := exec.Command(ffprobePath,
 		"-v", "quiet",
 		"-print_format", "json",
@@ -63,7 +77,18 @@ func Probe(ffprobePath, videoPath string) (*data.StreamInfo, error) {
 		}
 	}
 
-	info.Action, info.ActionLabel = classifyStream(probe.Format.FormatName, probe.Streams)
+	info.Action, info.ActionLabel = p.classifyStream(probe.Format.FormatName, probe.Streams)
+
+	p.log.Debug("media: probe result",
+		"videoPath", videoPath,
+		"container", info.Container,
+		"videoCodec", info.VideoCodec,
+		"audioCodec", info.AudioCodec,
+		"width", info.Width,
+		"height", info.Height,
+		"action", info.Action,
+		"actionLabel", info.ActionLabel,
+	)
 
 	return info, nil
 }
@@ -133,7 +158,7 @@ func codecDisplayName(name string) string {
 	}
 }
 
-func classifyStream(formatName string, streams []ffprobeStream) (action, actionLabel string) {
+func (p *Prober) classifyStream(formatName string, streams []ffprobeStream) (action, actionLabel string) {
 	formatName = strings.ToLower(formatName)
 	parts := strings.Split(formatName, ",")
 
@@ -145,8 +170,9 @@ func classifyStream(formatName string, streams []ffprobeStream) (action, actionL
 		"webm": true, "ogg": true,
 	}
 
-	for _, p := range parts {
-		if alwaysNativeContainers[p] {
+	for _, part := range parts {
+		if alwaysNativeContainers[part] {
+			p.log.Debug("media: classified as native (always-native container)", "format", part)
 			return "native", "Direct Native"
 		}
 	}
@@ -165,8 +191,8 @@ func classifyStream(formatName string, streams []ffprobeStream) (action, actionL
 	}
 
 	isNativeContainer := false
-	for _, p := range parts {
-		if nativeContainers[p] {
+	for _, part := range parts {
+		if nativeContainers[part] {
 			isNativeContainer = true
 			break
 		}
@@ -174,37 +200,48 @@ func classifyStream(formatName string, streams []ffprobeStream) (action, actionL
 
 	if isNativeContainer {
 		if nativeCodecs[videoCodec] {
+			p.log.Debug("media: classified as native (native container + native codec)", "codec", videoCodec)
 			return "native", "Direct Native"
 		}
 		if videoCodec == "hevc" || videoCodec == "h265" {
+			p.log.Debug("media: classified as native (native container + hevc)", "codec", videoCodec)
 			return "native", "Direct Native"
 		}
+		p.log.Debug("media: classified as sw_transcode (native container + non-native codec)", "codec", videoCodec)
 		return "sw_transcode", "SW Transcode"
 	}
 
 	if nativeCodecs[videoCodec] {
+		p.log.Debug("media: classified as remux (non-native container + native codec)", "codec", videoCodec)
 		return "remux", "Remux"
 	}
 
+	p.log.Debug("media: classified as sw_transcode (non-native container + non-native codec)", "codec", videoCodec)
 	return "sw_transcode", "SW Transcode"
 }
 
-func DetectHWEncoder(ffmpegPath string) string {
+func (p *Prober) DetectHWEncoder(ffmpegPath string) string {
+	p.log.Debug("media: detecting hardware encoder", "ffmpegPath", ffmpegPath)
 	cmd := exec.Command(ffmpegPath, "-encoders")
 	output, err := cmd.Output()
 	if err != nil {
+		p.log.Debug("media: failed to run ffmpeg -encoders", "error", err)
 		return ""
 	}
 	out := string(output)
 
 	switch {
 	case strings.Contains(out, "h264_nvenc"):
+		p.log.Debug("media: detected hw encoder", "encoder", "NVENC")
 		return "h264_nvenc"
 	case strings.Contains(out, "h264_qsv"):
+		p.log.Debug("media: detected hw encoder", "encoder", "QSV")
 		return "h264_qsv"
 	case strings.Contains(out, "h264_amf"):
+		p.log.Debug("media: detected hw encoder", "encoder", "AMF")
 		return "h264_amf"
 	default:
+		p.log.Debug("media: no compatible hardware encoder found")
 		return ""
 	}
 }

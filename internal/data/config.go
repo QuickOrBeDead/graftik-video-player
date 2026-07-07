@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	graftikLogger "graftik-wails/internal/logger"
 )
 
 type AppConfig struct {
@@ -28,15 +30,22 @@ type AppConfig struct {
 type ConfigStore struct {
 	configPath string
 	config     AppConfig
+	log        graftikLogger.Logger
 }
 
-func NewConfigStore(userDataPath string) *ConfigStore {
+func NewConfigStore(userDataPath string, log graftikLogger.Logger) *ConfigStore {
+	if log == nil {
+		panic("data: logger is required")
+	}
+	log.Debug("config: creating config store", "userDataPath", userDataPath)
 	return &ConfigStore{
 		configPath: filepath.Join(userDataPath, "config.json"),
+		log:        log,
 	}
 }
 
 func (c *ConfigStore) Load() error {
+	c.log.Debug("config: loading config", "path", c.configPath)
 	data, err := os.ReadFile(c.configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -53,10 +62,12 @@ func (c *ConfigStore) Load() error {
 	if err := json.Unmarshal(data, &c.config); err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
+	c.log.Debug("config: config loaded", "path", c.configPath)
 	return nil
 }
 
 func (c *ConfigStore) Save() error {
+	c.log.Debug("config: saving config", "path", c.configPath)
 	dir := filepath.Dir(c.configPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create config dir: %w", err)
@@ -73,6 +84,7 @@ func (c *ConfigStore) GetCurrentPlaylist() string {
 }
 
 func (c *ConfigStore) SetCurrentPlaylist(id string) error {
+	c.log.Debug("config: setting current playlist", "id", id)
 	c.config.CurrentPlaylist = id
 	return c.Save()
 }
@@ -98,6 +110,7 @@ func (c *ConfigStore) GetPreferences() *AppConfig {
 }
 
 func (c *ConfigStore) UpdateSettings(settings map[string]any) error {
+	c.log.Debug("config: updating settings", "settings", settings)
 	if v, ok := settings["shuffle"]; ok {
 		c.config.Shuffle = v.(bool)
 	}

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	graftikLogger "graftik-wails/internal/logger"
+
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -16,9 +18,14 @@ type LuaPlugin struct {
 	mu       sync.Mutex
 	L        *lua.LState
 	Manifest *Manifest
+	log      graftikLogger.Logger
 }
 
-func LoadLuaPlugin(dir string) (*LuaPlugin, error) {
+func LoadLuaPlugin(dir string, log graftikLogger.Logger) (*LuaPlugin, error) {
+	if log == nil {
+		panic("lua: logger is required")
+	}
+	log.Debug("lua: loading plugin", "dir", dir)
 	cfgPath := filepath.Join(dir, "plugin.json")
 	cfgData, err := os.ReadFile(cfgPath)
 	if err != nil {
@@ -43,6 +50,7 @@ func LoadLuaPlugin(dir string) (*LuaPlugin, error) {
 			Name:    cfg.Name,
 			Version: cfg.Version,
 		},
+		log: log,
 	}
 
 	p.registerHostAPI()
@@ -83,6 +91,7 @@ func LoadLuaPlugin(dir string) (*LuaPlugin, error) {
 }
 
 func (p *LuaPlugin) ExecuteAction(action string, args map[string]any) error {
+	p.log.Debug("lua: executing action", "plugin", p.Manifest.ID, "action", action, "args", args)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -124,6 +133,7 @@ func (p *LuaPlugin) ExecuteAction(action string, args map[string]any) error {
 }
 
 func (p *LuaPlugin) Close() {
+	p.log.Debug("lua: closing plugin", "plugin", p.Manifest.ID)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.L.Close()
@@ -205,6 +215,7 @@ func (p *LuaPlugin) hostExec(L *lua.LState) int {
 		}
 		if err := scanner.Err(); err != nil {
 			fmt.Fprintf(os.Stderr, "plugin: stdout scanner error: %v\n", err)
+			p.log.Debug("lua: stdout scanner error", "plugin", p.Manifest.ID, "error", err)
 		}
 	}()
 	go func() {
@@ -214,6 +225,7 @@ func (p *LuaPlugin) hostExec(L *lua.LState) int {
 		}
 		if err := scanner.Err(); err != nil {
 			fmt.Fprintf(os.Stderr, "plugin: stderr scanner error: %v\n", err)
+			p.log.Debug("lua: stderr scanner error", "plugin", p.Manifest.ID, "error", err)
 		}
 	}()
 
@@ -250,6 +262,7 @@ func (p *LuaPlugin) hostExec(L *lua.LState) int {
 }
 
 func (p *LuaPlugin) callLineCallback(L *lua.LState, l execLine, onStdout, onStderr *lua.LFunction) {
+	p.log.Debug("lua: calling line callback", "plugin", p.Manifest.ID, "stream", l.stream)
 	if l.stream == "stdout" && onStdout != nil {
 		L.Push(onStdout)
 		L.Push(lua.LString(l.text))
@@ -266,6 +279,7 @@ func (p *LuaPlugin) hostEmit(L *lua.LState) int {
 	name := L.CheckString(1)
 	data := L.Get(2)
 	jsonData := toJSON(L, data)
+	p.log.Debug("lua: host emit", "plugin", p.Manifest.ID, "event", name)
 	if eventSink != nil {
 		eventSink(name, jsonData)
 	}
@@ -275,6 +289,7 @@ func (p *LuaPlugin) hostEmit(L *lua.LState) int {
 func (p *LuaPlugin) hostAddToPlaylist(L *lua.LState) int {
 	path := L.CheckString(1)
 	title := L.OptString(2, "")
+	p.log.Debug("lua: host addToPlaylist", "plugin", p.Manifest.ID, "path", path, "title", title)
 	if addToPlaylistFn != nil {
 		addToPlaylistFn(path, title)
 	}

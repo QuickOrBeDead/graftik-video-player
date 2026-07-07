@@ -37,6 +37,7 @@ export function usePlayer() {
 
     const toggleShuffle = () => {
       state.shuffle = !state.shuffle
+      logger.debug('toggleShuffle', state.shuffle)
     }
 
     const toggleControlsVisible = () => {
@@ -58,6 +59,7 @@ export function usePlayer() {
     const toggleRepeatMode = () => {
       const currentIndex = repeatModes.indexOf(state.repeat)
       state.repeat = repeatModes[(currentIndex + 1) % repeatModes.length]
+      logger.debug('toggleRepeatMode', state.repeat)
     }
 
     const toggleMute = () => {
@@ -75,6 +77,7 @@ export function usePlayer() {
 
       state.volumeLevel = Math.max(0, Math.min(1, level))
       state.isMuted = state.volumeLevel === 0
+      logger.debug('setVolume', state.volumeLevel)
     }
 
     const volumeIcon = computed(() => {
@@ -91,6 +94,7 @@ export function usePlayer() {
 
     const setPlaybackRate = (level: number) => {
       state.playbackRate = Math.max(0.5, Math.min(2.0, level))
+      logger.debug('setPlaybackRate', state.playbackRate)
     }
 
     const timestampLabel = computed(() => {
@@ -125,6 +129,7 @@ export function usePlayer() {
 
       state.currentTime = newTime
       state.seekTime = newTime
+      logger.debug('skipTime', seconds, 'newTime', newTime)
     }
 
     const updateTime = (currentTime: number, duration :number) => {
@@ -168,6 +173,7 @@ export function usePlayer() {
 
       state.currentTime = newTime
       state.seekTime = newTime
+      logger.debug('seek', percent, 'newTime', newTime)
     }
 
     const handleProgressBarHover = (percent: number) => {
@@ -180,12 +186,16 @@ export function usePlayer() {
     }
 
     const toVideoUrl = (filePath: string): string => {
-      return `http://127.0.0.1:${videoPort}/api/video?path=` + encodeURIComponent(filePath)
+      const url = `http://127.0.0.1:${videoPort}/api/video?path=` + encodeURIComponent(filePath)
+      logger.debug('toVideoUrl', url)
+      return url
     }
 
     const getStreamUrl = async (playlistItemId: string): Promise<StreamURLResult | null> => {
+      logger.debug('getStreamUrl', playlistItemId)
       try {
         const result = await window.go.main.App.GetStreamURL(playlistItemId) as StreamURLResult | null
+        logger.debug('getStreamUrl result', result)
         return result
       } catch (e) {
         logger.error('GetStreamURL error:', e)
@@ -194,6 +204,7 @@ export function usePlayer() {
     }
 
     const stopHlsStream = async (streamId: string) => {
+      logger.debug('stopHlsStream', streamId)
       try {
         await window.go.main.App.StopHLSStream(streamId)
       } catch (e) {
@@ -202,6 +213,7 @@ export function usePlayer() {
     }
 
     const playVideo = async (videoSrc: string, currentTime: number, playlistItemId?: string) => {
+      logger.debug('playVideo', { videoSrc, currentTime, playlistItemId })
       state.playlistItemId = playlistItemId
       state.currentTime = currentTime
 
@@ -228,16 +240,18 @@ export function usePlayer() {
 
       state.videoSrc = url
       state.isPlaying = true
+      logger.debug('playVideo: video source set', url)
     }
 
-    const applyPreferences = (prefs: AppPreferences) => {
-      state.shuffle = prefs.shuffle
-      state.repeat = prefs.repeatMode as RepeatMode
-      state.volumeLevel = prefs.volumeLevel
-      state.playbackRate = prefs.playbackRate
-      state.sidebarVisible = prefs.sidebarVisible
-      state.sidebarWidth = prefs.sidebarWidth
-      state.shouldAutoplay = prefs.isPlaying
+    const applyPreferences = (preferences: AppPreferences) => {
+      logger.debug('applyPreferences', preferences)
+      state.shuffle = preferences.shuffle
+      state.repeat = preferences.repeatMode as RepeatMode
+      state.volumeLevel = preferences.volumeLevel
+      state.playbackRate = preferences.playbackRate
+      state.sidebarVisible = preferences.sidebarVisible
+      state.sidebarWidth = preferences.sidebarWidth
+      state.shouldAutoplay = preferences.isPlaying
     }
 
     const setSidebarWidth = (width: number) => {

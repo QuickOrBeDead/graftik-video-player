@@ -38,9 +38,13 @@ type App struct {
 	pluginsDir      string
 	updateETag      string
 	log             graftikLogger.Logger
+	prober          *media.Prober
 }
 
 func NewApp(log graftikLogger.Logger) (*App, error) {
+	if log == nil {
+		panic("app: logger is required")
+	}
 	userDataDir, err := os.UserConfigDir()
 	appDataDir := ""
 	if err == nil {
@@ -53,7 +57,7 @@ func NewApp(log graftikLogger.Logger) (*App, error) {
 
 	dbPath := filepath.Join(appDataDir, "player.db")
 
-	store, err := data.NewPlayerDataStore(appDataDir, dbPath)
+	store, err := data.NewPlayerDataStore(appDataDir, dbPath, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create player data store: %w", err)
 	}
@@ -70,19 +74,21 @@ func NewApp(log graftikLogger.Logger) (*App, error) {
 	ffprobePath := filepath.Join(ffmpegDir, "ffprobe"+ext)
 
 	hlsDir := filepath.Join(os.TempDir(), "graftik-hls")
-	hlsEngine := hls.NewEngine(ffmpegPath, hlsDir)
+	hlsEngine := hls.NewEngine(ffmpegPath, hlsDir, log)
 
 	pluginsDir := filepath.Join(appDataDir, "plugins")
+	prober := media.NewProber(log)
 
 	return &App{
-		Service:        internal.NewPlayerService(store, thumbnailStore, hlsEngine, ffmpegPath, ffprobePath, log),
+		Service:        internal.NewPlayerService(store, thumbnailStore, hlsEngine, ffmpegPath, ffprobePath, log, prober),
 		store:          store,
 		thumbnailStore: thumbnailStore,
 		ffmpegDir:      ffmpegDir,
 		hlsEngine:      hlsEngine,
-		pluginManager:  plugin.NewManager(pluginsDir),
+		pluginManager:  plugin.NewManager(pluginsDir, log),
 		pluginsDir:     pluginsDir,
 		log:            log,
+		prober:         prober,
 	}, nil
 }
 
@@ -91,6 +97,7 @@ func (a *App) Logger() graftikLogger.Logger {
 }
 
 func (a *App) startup(ctx context.Context) {
+	a.log.Debug("app: starting up")
 	a.ctx = ctx
 
 	// Defer frontend log sink until frontend signals it's ready
@@ -109,16 +116,19 @@ func (a *App) startup(ctx context.Context) {
 		a.log.Error("failed to create app data dir", "error", err)
 		return
 	}
+	a.log.Debug("app: data dir ready", "path", appDataDir)
 
 	if err := a.store.Initialize(); err != nil {
 		a.log.Error("failed to run migrations", "error", err)
 		return
 	}
+	a.log.Debug("app: database initialized")
 
 	if err := a.store.AddDefaultPlaylist(); err != nil {
 		a.log.Error("failed to create default playlist", "error", err)
 		return
 	}
+	a.log.Debug("app: default playlist ready")
 
 	// Apply log config from preferences if available
 	if preferences := a.store.GetPreferences(); preferences != nil {
@@ -158,11 +168,6 @@ func (a *App) startup(ctx context.Context) {
 	if a.videoServer != nil {
 		a.videoServer.RegisterHLS(a.hlsEngine.BaseDir())
 	}
-
-	// Wire plugin manager logging
-	a.pluginManager.SetLogFn(func(format string, args ...any) {
-		a.log.Info(fmt.Sprintf(format, args...))
-	})
 
 	// Wire up Lua plugin host callbacks
 	plugin.SetAddToPlaylistFn(func(path, title string) {
@@ -225,14 +230,18 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	a.log.Debug("app: shutting down")
+
+	a.log.Debug("app: shutting down plugin manager")
 	a.pluginManager.Shutdown()
 
-	// Stop all HLS streams and clean up
+	a.log.Debug("app: shutting down hls engine")
 	if a.hlsEngine != nil {
 		a.hlsEngine.Shutdown()
 	}
 
 	if a.store != nil {
+		a.log.Debug("app: saving window size and closing data store")
 		// Save window size
 		w, h := wailsRuntime.WindowGetSize(ctx)
 		if w > 0 && h > 0 {
@@ -285,7 +294,7 @@ func (a *App) GetStreamURL(playlistItemID string) *data.StreamURLResult {
 	}
 
 	// Probe to determine remux vs transcode
-	info, err := media.Probe(a.Service.FFprobePath(), item.Path)
+	info, err := a.prober.Probe(a.Service.FFprobePath(), item.Path)
 	if err != nil {
 		a.log.Error("GetStreamURL: media probe failed", "path", item.Path, "error", err)
 		return nil
@@ -303,7 +312,7 @@ func (a *App) GetStreamURL(playlistItemID string) *data.StreamURLResult {
 
 	// Detect HW encoder for transcodes
 	if info.Action == "sw_transcode" {
-		hw := media.DetectHWEncoder(a.Service.FFmpegPath())
+		hw := a.prober.DetectHWEncoder(a.Service.FFmpegPath())
 		if hw != "" {
 			info.Action = "hw_transcode"
 			info.HWEncoder = hwEncoderShortLabel(hw)
@@ -344,6 +353,7 @@ func hwEncoderShortLabel(name string) string {
 }
 
 func (a *App) StopHLSStream(streamID string) {
+	a.log.Debug("app: stop hls stream", "streamID", streamID)
 	if a.hlsEngine == nil {
 		return
 	}
@@ -354,14 +364,17 @@ func (a *App) StopHLSStream(streamID string) {
 }
 
 func (a *App) GetPlugins() []plugin.PluginInfo {
+	a.log.Debug("app: getting plugins")
 	return a.pluginManager.Plugins()
 }
 
 func (a *App) ExecutePluginAction(pluginID, action, argsJSON string) error {
+	a.log.Debug("app: execute plugin action", "pluginID", pluginID, "action", action)
 	return a.pluginManager.ExecuteAction(pluginID, action, argsJSON)
 }
 
 func (a *App) PickPluginFile() (string, error) {
+	a.log.Debug("app: picking plugin file")
 	if a.ctx == nil {
 		return "", nil
 	}
@@ -381,6 +394,7 @@ func (a *App) PickPluginFile() (string, error) {
 }
 
 func (a *App) PickDirectory() (string, error) {
+	a.log.Debug("app: picking directory")
 	if a.ctx == nil {
 		return "", nil
 	}
@@ -394,6 +408,7 @@ func (a *App) PickDirectory() (string, error) {
 }
 
 func (a *App) GetPluginFile(pluginID, fileName string) (string, error) {
+	a.log.Debug("app: getting plugin file", "pluginID", pluginID, "fileName", fileName)
 	if strings.Contains(pluginID, "..") || strings.Contains(pluginID, "/") || strings.Contains(pluginID, "\\") {
 		return "", fmt.Errorf("invalid plugin id")
 	}
@@ -409,6 +424,7 @@ func (a *App) GetPluginFile(pluginID, fileName string) (string, error) {
 }
 
 func (a *App) InstallPluginFromFile(filePath string) (*plugin.PluginInfo, error) {
+	a.log.Debug("app: installing plugin from file", "filePath", filePath)
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("read file: %w", err)
@@ -434,6 +450,7 @@ func (pr *progressReader) Read(p []byte) (int, error) {
 }
 
 func (a *App) InstallPluginFromURL(url string) (*plugin.PluginInfo, error) {
+	a.log.Debug("app: installing plugin from url", "url", url)
 	if a.ctx != nil {
 		wailsRuntime.EventsEmit(a.ctx, "plugin-install-log", `{"message":"Downloading plugin..."}`)
 	}
@@ -587,9 +604,11 @@ func (a *App) openFileDialog(ctx context.Context) {
 		},
 	})
 	if err != nil || len(files) == 0 {
+		a.log.Debug("app: open file dialog returned no files", "error", err)
 		return
 	}
 
+	a.log.Debug("app: open file dialog result", "count", len(files))
 	items := a.store.InitNewPlaylistItems(files)
 	a.log.Info("adding playlist items", "count", len(items))
 	wailsRuntime.EventsEmit(ctx, "add-playlist-item", items)

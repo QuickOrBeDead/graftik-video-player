@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"graftik-wails/internal/data"
+	graftikLogger "graftik-wails/internal/logger"
 
 	"github.com/google/uuid"
 )
@@ -23,13 +24,19 @@ type Engine struct {
 	ffmpegPath string
 	baseDir    string
 	streams    map[string]*Stream
+	log        graftikLogger.Logger
 }
 
-func NewEngine(ffmpegPath, baseDir string) *Engine {
+func NewEngine(ffmpegPath, baseDir string, log graftikLogger.Logger) *Engine {
+	if log == nil {
+		panic("hls: logger is required")
+	}
+	log.Debug("hls: creating engine", "ffmpegPath", ffmpegPath, "baseDir", baseDir)
 	return &Engine{
 		ffmpegPath: ffmpegPath,
 		baseDir:    baseDir,
 		streams:    make(map[string]*Stream),
+		log:        log,
 	}
 }
 
@@ -52,6 +59,8 @@ func (e *Engine) StartStream(path string, info *data.StreamInfo) (string, error)
 
 	args := e.buildFFmpegArgs(path, segPattern, playlistPath, info)
 
+	e.log.Debug("hls: starting stream", "streamID", streamID, "input", path, "action", info.Action)
+
 	cmd := exec.Command(e.ffmpegPath, args...)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
@@ -67,6 +76,7 @@ func (e *Engine) StartStream(path string, info *data.StreamInfo) (string, error)
 		Dir: outDir,
 	}
 
+	e.log.Debug("hls: stream started", "streamID", streamID)
 	return streamID, nil
 }
 
@@ -76,8 +86,10 @@ func (e *Engine) StopStream(streamID string) {
 
 	stream, ok := e.streams[streamID]
 	if !ok {
+		e.log.Debug("hls: stream not found for stopping", "streamID", streamID)
 		return
 	}
+	e.log.Debug("hls: stopping stream", "streamID", streamID)
 
 	if stream.Cmd != nil && stream.Cmd.Process != nil {
 		stream.Cmd.Process.Kill()
@@ -92,6 +104,7 @@ func (e *Engine) Shutdown() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	e.log.Debug("hls: shutting down engine")
 	for id, stream := range e.streams {
 		if stream.Cmd != nil && stream.Cmd.Process != nil {
 			stream.Cmd.Process.Kill()
