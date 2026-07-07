@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, provide } from 'vue'
+import { Modal } from 'bootstrap'
 import { usePlayer } from './video-player/composables/usePlayer'
 import { usePlaylist } from './video-player/composables/usePlaylist'
 import { Playlist, VideoPlayer } from './video-player'
@@ -24,6 +25,9 @@ const activePluginUI = ref<PluginInfo | null>(null)
 const showUpdateDialog = ref(false)
 const showAboutDialog = ref(false)
 const updateAvailable = ref('')
+const errorMessage = ref('')
+const errorModalRef = ref<HTMLDivElement>()
+let errorModal: Modal | null = null
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -44,6 +48,7 @@ onMounted(async () => {
       logger.debug('[LOAD:PREFERENCES] Preferences loaded:', prefs)
     }
   } catch (e) {
+    showErrorModal('Could not load preferences.')
     logger.error('Load preferences error:', e)
   }
 
@@ -58,12 +63,22 @@ onMounted(async () => {
 
   window.runtime.EventsOn('load-playlist-name', async () => {
     if (playlist.value) {
-      playlist.value.name = (await window.go.internal.PlayerService.GetPlaylistName(playlist.value.id)) as string
+      try {
+        playlist.value.name = (await window.go.internal.PlayerService.GetPlaylistName(playlist.value.id)) as string
+      } catch (err) {
+        showErrorModal('Could not load playlist name.')
+        logger.error('Main: failed to load playlist name:', err)
+      }
     }
   })
 
   window.runtime.EventsOn('load-playlist', async () => {
-    await loadPlaylist()
+    try {
+      await loadPlaylist()
+    } catch (err) {
+      showErrorModal('Could not load playlist.')
+      logger.error('Main: failed to load playlist:', err)
+    }
   })
 
   window.runtime.EventsOn('open-choose-playlist', () => {
@@ -107,10 +122,15 @@ watch(() => playlistState.currentItem, (v) => {
 })
 
 const loadPlaylist = async () => {
-  const dbPlaylist = await window.go.internal.PlayerService.GetCurrentPlaylist() as DbPlaylist | null
-  if (dbPlaylist) {
-    setPlaylist(dbPlaylist)
-    logger.debug('[LOAD:PLAYLIST] Loaded playlist:', dbPlaylist)
+  try {
+    const dbPlaylist = await window.go.internal.PlayerService.GetCurrentPlaylist() as DbPlaylist | null
+    if (dbPlaylist) {
+      setPlaylist(dbPlaylist)
+      logger.debug('[LOAD:PLAYLIST] Loaded playlist:', dbPlaylist)
+    }
+  } catch (err) {
+    showErrorModal('Could not load playlist.')
+    logger.error('Main: failed to load playlist:', err)
   }
 }
 
@@ -139,6 +159,16 @@ const setPlaylist = (dbPlaylist: DbPlaylist) => {
   }
 }
 
+function showErrorModal(msg: string) {
+  errorMessage.value = msg
+  if (errorModalRef.value) {
+    errorModal = new Modal(errorModalRef.value!)
+    errorModal.show()
+  }
+}
+
+provide('showErrorModal', showErrorModal)
+
 function onOpenPlugin(plugin: PluginInfo, action: string) {
   if (plugin.ui) {
     activePluginUI.value = plugin
@@ -162,6 +192,25 @@ function onOpenPlugin(plugin: PluginInfo, action: string) {
   <PluginUIHost v-if="activePluginUI" :plugin="activePluginUI" @close="activePluginUI = null" />
   <UpdateDialog v-if="showUpdateDialog" @close="showUpdateDialog = false" />
   <AboutDialog v-if="showAboutDialog" @close="showAboutDialog = false" />
+
+  <div ref="errorModalRef" class="modal fade" tabindex="-1" data-bs-theme="dark">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background-color: #1f1f1f; border: 1px solid #333;">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title text-white">
+            <i class="bi bi-exclamation-triangle me-2"></i>Error
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="text-danger small">{{ errorMessage }}</div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>

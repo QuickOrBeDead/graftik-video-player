@@ -92,8 +92,12 @@ func (e *Engine) StopStream(streamID string) {
 	e.log.Debug("hls: stopping stream", "streamID", streamID)
 
 	if stream.Cmd != nil && stream.Cmd.Process != nil {
-		stream.Cmd.Process.Kill()
-		stream.Cmd.Wait()
+		if err := stream.Cmd.Process.Kill(); err != nil {
+			e.log.Error("hls: failed to kill stream process", "streamID", streamID, "error", err)
+		}
+		if err := stream.Cmd.Wait(); err != nil {
+			e.log.Error("hls: failed to wait for stream process", "streamID", streamID, "error", err)
+		}
 	}
 
 	os.RemoveAll(stream.Dir)
@@ -107,8 +111,12 @@ func (e *Engine) Shutdown() {
 	e.log.Debug("hls: shutting down engine")
 	for id, stream := range e.streams {
 		if stream.Cmd != nil && stream.Cmd.Process != nil {
-			stream.Cmd.Process.Kill()
-			stream.Cmd.Wait()
+			if err := stream.Cmd.Process.Kill(); err != nil {
+				e.log.Error("hls: failed to kill stream process during shutdown", "streamID", id, "error", err)
+			}
+			if err := stream.Cmd.Wait(); err != nil {
+				e.log.Error("hls: failed to wait for stream process during shutdown", "streamID", id, "error", err)
+			}
 		}
 		os.RemoveAll(stream.Dir)
 		delete(e.streams, id)

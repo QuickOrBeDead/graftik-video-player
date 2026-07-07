@@ -62,7 +62,10 @@ func NewApp(log graftikLogger.Logger) (*App, error) {
 		return nil, fmt.Errorf("failed to create player data store: %w", err)
 	}
 
-	thumbnailStore := data.NewThumbnailDataStore(appDataDir)
+	thumbnailStore, err := data.NewThumbnailDataStore(appDataDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create thumbnail data store: %w", err)
+	}
 
 	ext := ""
 	if runtime.GOOS == "windows" {

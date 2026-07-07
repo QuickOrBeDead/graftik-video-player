@@ -199,7 +199,10 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 	fileHash := s.thumbnailStore.CalculateFileHash(videoPath, stats.Size(), stats.ModTime().UnixMilli())
 
 	// Check cache
-	thumbnail, _ := s.thumbnailStore.GetThumbnail(playlistID, playlistItemID, fileHash)
+	thumbnail, err := s.thumbnailStore.GetThumbnail(playlistID, playlistItemID, fileHash)
+	if err != nil {
+		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache lookup failed", "playlistID", playlistID, "playlistItemID", playlistItemID, "error", err)
+	}
 	if thumbnail != "" {
 		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache hit", "fileHash", fileHash, "playlistItemID", playlistItemID)
 		duration := s.probeDuration(videoPath)
@@ -300,11 +303,17 @@ func (s *PlayerService) OpenContainingFolder(filePath string) {
 
 	switch goruntime.GOOS {
 	case "windows":
-		exec.Command("explorer", "/select,", filePath).Start()
+		if err := exec.Command("explorer", "/select,", filePath).Start(); err != nil {
+			s.log.Error("OpenContainingFolder: failed to open explorer", "path", filePath, "error", err)
+		}
 	case "darwin":
-		exec.Command("open", "-R", filePath).Start()
+		if err := exec.Command("open", "-R", filePath).Start(); err != nil {
+			s.log.Error("OpenContainingFolder: failed to open finder", "path", filePath, "error", err)
+		}
 	default:
-		exec.Command("xdg-open", filepath.Dir(filePath)).Start()
+		if err := exec.Command("xdg-open", filepath.Dir(filePath)).Start(); err != nil {
+			s.log.Error("OpenContainingFolder: failed to open xdg-open", "path", filepath.Dir(filePath), "error", err)
+		}
 	}
 
 	s.log.Debug("OpenContainingFolder: finished")

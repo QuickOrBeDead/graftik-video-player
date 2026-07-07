@@ -112,46 +112,74 @@ func (c *ConfigStore) GetPreferences() *AppConfig {
 func (c *ConfigStore) UpdateSettings(settings map[string]any) error {
 	c.log.Debug("config: updating settings", "settings", settings)
 	if v, ok := settings["shuffle"]; ok {
-		c.config.Shuffle = v.(bool)
+		if val, ok := v.(bool); ok {
+			c.config.Shuffle = val
+		}
 	}
 	if v, ok := settings["repeatMode"]; ok {
-		c.config.RepeatMode = int(v.(float64))
+		if val, ok := v.(float64); ok {
+			c.config.RepeatMode = int(val)
+		}
 	}
 	if v, ok := settings["volumeLevel"]; ok {
-		c.config.VolumeLevel = v.(float64)
+		if val, ok := v.(float64); ok {
+			c.config.VolumeLevel = val
+		}
 	}
 	if v, ok := settings["playbackRate"]; ok {
-		c.config.PlaybackRate = v.(float64)
+		if val, ok := v.(float64); ok {
+			c.config.PlaybackRate = val
+		}
 	}
 	if v, ok := settings["sidebarVisible"]; ok {
-		c.config.SidebarVisible = v.(bool)
+		if val, ok := v.(bool); ok {
+			c.config.SidebarVisible = val
+		}
 	}
 	if v, ok := settings["sidebarWidth"]; ok {
-		c.config.SidebarWidth = int(v.(float64))
+		if val, ok := v.(float64); ok {
+			c.config.SidebarWidth = int(val)
+		}
 	}
 	if v, ok := settings["windowWidth"]; ok {
-		c.config.WindowWidth = int(v.(float64))
+		if val, ok := v.(float64); ok {
+			c.config.WindowWidth = int(val)
+		}
 	}
 	if v, ok := settings["windowHeight"]; ok {
-		c.config.WindowHeight = int(v.(float64))
+		if val, ok := v.(float64); ok {
+			c.config.WindowHeight = int(val)
+		}
 	}
 	if v, ok := settings["isPlaying"]; ok {
-		c.config.IsPlaying = v.(bool)
+		if val, ok := v.(bool); ok {
+			c.config.IsPlaying = val
+		}
 	}
 	if v, ok := settings["lastPlayedItem"]; ok {
-		c.config.LastPlayedItem = v.(string)
+		if val, ok := v.(string); ok {
+			c.config.LastPlayedItem = val
+		}
 	}
 	if v, ok := settings["includePrereleasesForUpdates"]; ok {
-		c.config.IncludePrereleasesForUpdates = v.(bool)
+		if val, ok := v.(bool); ok {
+			c.config.IncludePrereleasesForUpdates = val
+		}
 	}
 	if v, ok := settings["debug"]; ok {
-		c.config.Debug = v.(bool)
+		if val, ok := v.(bool); ok {
+			c.config.Debug = val
+		}
 	}
 	if v, ok := settings["logLevel"]; ok {
-		c.config.LogLevel = v.(string)
+		if val, ok := v.(string); ok {
+			c.config.LogLevel = val
+		}
 	}
 	if v, ok := settings["logToFile"]; ok {
-		c.config.LogToFile = v.(bool)
+		if val, ok := v.(bool); ok {
+			c.config.LogToFile = val
+		}
 	}
 	return c.Save()
 }

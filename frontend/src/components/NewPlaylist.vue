@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { Modal } from 'bootstrap'
+import { logger } from '@renderer/utils/logger'
 
 const emit = defineEmits<{ close: [] }>()
 const name = ref<string>()
 const modalRef = ref<HTMLDivElement>()
+const error = ref('')
 let modal: Modal;
 
 onMounted(() => {
@@ -16,10 +18,14 @@ onMounted(() => {
 })
 
 async function add() {
-  await window.go.internal.PlayerService.AddPlaylist(name.value ?? '')
-
-  if (modal) {
-    modal.hide()
+  try {
+    await window.go.internal.PlayerService.AddPlaylist(name.value ?? '')
+    if (modal) {
+      modal.hide()
+    }
+  } catch (err) {
+    error.value = 'Could not add playlist.'
+    logger.error('NewPlaylist: failed to add playlist:', err)
   }
 }
 </script>
@@ -38,6 +44,7 @@ async function add() {
           <form @submit.prevent="add">
             <input v-model="name" type="text" class="form-control bg-dark text-white border-secondary" placeholder="Name" />
           </form>
+          <div v-if="error" class="text-danger small mt-2">{{ error }}</div>
         </div>
         <div class="modal-footer border-secondary">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

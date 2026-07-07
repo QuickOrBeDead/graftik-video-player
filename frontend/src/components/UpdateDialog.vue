@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { Modal } from 'bootstrap'
+import { logger } from '@renderer/utils/logger'
 
 const emit = defineEmits<{
   close: []
@@ -35,14 +36,27 @@ onMounted(async () => {
       if (typeof p.percent === 'number') {
         progressPercent.value = Math.round(p.percent)
       }
-    } catch {}
+    } catch (e) {
+      error.value = 'Could not parse download progress.'
+      logger.error('UpdateDialog: failed to parse download progress data:', e)
+    }
   }))
 
-  currentVersion.value = await (window as any).go.main.App.GetAppVersion() as string
+  try {
+    currentVersion.value = await (window as any).go.main.App.GetAppVersion() as string
+  } catch (e) {
+    error.value = 'Could not retrieve app version.'
+    logger.error('UpdateDialog: failed to get app version:', e)
+  }
 
-  const prefs = await (window as any).go.internal.PlayerService.GetPreferences()
-  if (prefs) {
-    includePrerelease.value = !!prefs.includePrereleasesForUpdates
+  try {
+    const prefs = await (window as any).go.internal.PlayerService.GetPreferences()
+    if (prefs) {
+      includePrerelease.value = !!prefs.includePrereleasesForUpdates
+    }
+  } catch (e) {
+    error.value = 'Could not load preferences.'
+    logger.error('UpdateDialog: failed to get preferences:', e)
   }
 
   await checkForUpdates()
@@ -64,7 +78,8 @@ async function checkForUpdates() {
     }
   } catch (e: any) {
     status.value = 'Error checking for updates.'
-    error.value = e?.message || String(e)
+    error.value = 'Could not check for updates.'
+    logger.error('UpdateDialog: failed to check for updates:', e)
   }
 }
 
@@ -81,7 +96,8 @@ async function downloadUpdate() {
     downloading.value = false
   } catch (e: any) {
     status.value = 'Download failed.'
-    error.value = e?.message || String(e)
+    error.value = 'Could not download update.'
+    logger.error('UpdateDialog: failed to download update:', e)
     downloading.value = false
   }
 }
@@ -98,13 +114,19 @@ async function installUpdate() {
     installing.value = false
   } catch (e: any) {
     status.value = 'Installation failed.'
-    error.value = e?.message || String(e)
+    error.value = 'Could not install update.'
+    logger.error('UpdateDialog: failed to install update:', e)
     installing.value = false
   }
 }
 
 async function onTogglePrerelease() {
-  await (window as any).go.internal.PlayerService.SavePreferences({ includePrereleasesForUpdates: includePrerelease.value })
+  try {
+    await (window as any).go.internal.PlayerService.SavePreferences({ includePrereleasesForUpdates: includePrerelease.value })
+  } catch (e) {
+    error.value = 'Could not save prerelease preference.'
+    logger.error('UpdateDialog: failed to save prerelease preference:', e)
+  }
   updateInfo.value = null
   error.value = ''
   await checkForUpdates()

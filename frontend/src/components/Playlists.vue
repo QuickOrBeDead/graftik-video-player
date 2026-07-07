@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, inject } from 'vue'
 import { Modal } from 'bootstrap'
+import { logger } from '@renderer/utils/logger'
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -9,6 +10,7 @@ const playlists = ref<{ name: string; id: string }[]>()
 const currentPlaylist = ref<{ name: string; id: string }>({ id: '', name: '' })
 const editModal = ref<HTMLDivElement>()
 const deleteModal = ref<HTMLDivElement>()
+const showErrorModal = inject('showErrorModal') as (msg: string) => void
 
 onMounted(async () => {
   await loadPlaylists()
@@ -21,7 +23,12 @@ onMounted(async () => {
 })
 
 async function loadPlaylists() {
-  playlists.value = (await window.go.internal.PlayerService.GetPlaylists()) as { name: string; id: string }[]
+  try {
+    playlists.value = (await window.go.internal.PlayerService.GetPlaylists()) as { name: string; id: string }[]
+  } catch (err) {
+    showErrorModal('Could not load playlists.')
+    logger.error('Playlists: failed to load playlists:', err)
+  }
 }
 
 function confirmDelete(item: { name: string; id: string }) {
@@ -59,20 +66,35 @@ function hideEditModal() {
 }
 
 async function savePlaylist() {
-  await window.go.internal.PlayerService.UpdatePlaylistName(currentPlaylist.value.id, currentPlaylist.value.name)
-  await loadPlaylists()
-  hideEditModal()
+  try {
+    await window.go.internal.PlayerService.UpdatePlaylistName(currentPlaylist.value.id, currentPlaylist.value.name)
+    await loadPlaylists()
+    hideEditModal()
+  } catch (err) {
+    showErrorModal('Could not save playlist.')
+    logger.error('Playlists: failed to save playlist:', err)
+  }
 }
 
 async function deletePlaylist() {
-  await window.go.internal.PlayerService.DeletePlaylist(currentPlaylist.value.id)
-  await loadPlaylists()
+  try {
+    await window.go.internal.PlayerService.DeletePlaylist(currentPlaylist.value.id)
+    await loadPlaylists()
+  } catch (err) {
+    showErrorModal('Could not delete playlist.')
+    logger.error('Playlists: failed to delete playlist:', err)
+  }
 
   hideDeleteModal()
 }
 
 async function selectPlaylist(id: string) {
-  await window.go.internal.PlayerService.SelectPlaylist(id)
+  try {
+    await window.go.internal.PlayerService.SelectPlaylist(id)
+  } catch (err) {
+    showErrorModal('Could not select playlist.')
+    logger.error('Playlists: failed to select playlist:', err)
+  }
   if (modalRef.value) {
     const modal = Modal.getInstance(modalRef.value!)
     if (modal) modal.hide()

@@ -318,7 +318,9 @@ func (m *Manager) Shutdown() {
 			inst.cancel()
 		}
 		if inst.Cmd != nil && inst.Cmd.Process != nil {
-			inst.Cmd.Process.Kill()
+			if err := inst.Cmd.Process.Kill(); err != nil {
+				m.log.Error("plugin: failed to kill instance process", "id", id, "error", err)
+			}
 		}
 		delete(m.instances, id)
 	}
@@ -334,6 +336,7 @@ func (m *Manager) Shutdown() {
 func (m *Manager) LaunchExecPlugins(ctx context.Context, hostPort int) {
 	entries, err := os.ReadDir(m.pluginsDir)
 	if err != nil {
+		m.log.Error("plugin: failed to read plugins dir", "dir", m.pluginsDir, "error", err)
 		return
 	}
 	for _, entry := range entries {
@@ -343,10 +346,12 @@ func (m *Manager) LaunchExecPlugins(ctx context.Context, hostPort int) {
 		cfgPath := filepath.Join(m.pluginsDir, entry.Name(), "plugin.json")
 		data, err := os.ReadFile(cfgPath)
 		if err != nil {
+			m.log.Debug("plugin: skipped dir (no plugin.json)", "dir", entry.Name(), "error", err)
 			continue
 		}
 		var cfg DiscoveryConfig
 		if err := json.Unmarshal(data, &cfg); err != nil {
+			m.log.Debug("plugin: skipped dir (invalid plugin.json)", "dir", entry.Name(), "error", err)
 			continue
 		}
 		if cfg.Type == "lua" || cfg.Command == "" {

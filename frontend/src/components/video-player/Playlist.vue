@@ -2,7 +2,7 @@
 import draggable from 'vuedraggable'
 import { usePlayer } from './composables/usePlayer'
 import { Modal } from 'bootstrap'
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref, watch, inject } from 'vue'
 import { formatTime } from './utils'
 import ContextMenu from '@imengyu/vue3-context-menu'
 import { Playlist, PlaylistItem, PlaylistSortInfo, PlaylistViewMode, VideoMetadata, StreamInfo } from './types'
@@ -36,6 +36,7 @@ const {
 
 const currentPlaylistItem = ref<PlaylistItem>()
 const deletePlaylistItemModal = ref<HTMLDivElement>()
+const showErrorModal = inject('showErrorModal') as (msg: string) => void
 
 const loadVideoMetadataPLimit = pLimit(2)
 
@@ -70,7 +71,12 @@ window.runtime.EventsOn('add-playlist-item', async (items: unknown) => {
   logger.debug('Playlist: add-playlist-item event', { count: itemsTyped.length })
   setNewPlaylistItemsOrderIndexes(itemsTyped)
 
-  await window.go.internal.PlayerService.AddPlaylistItems(itemsTyped)
+  try {
+    await window.go.internal.PlayerService.AddPlaylistItems(itemsTyped)
+  } catch (err) {
+    showErrorModal('Could not add playlist items.')
+    logger.error('Playlist: failed to add playlist items:', err)
+  }
 
   addNewPlaylistItems(itemsTyped)
 
@@ -84,10 +90,16 @@ const loadVideoMetadata = (i: PlaylistItem) => {
       i.thumbnailImage = data.thumbnail
       i.duration = data.duration
     })
+    .catch(err => {
+      logger.error('Playlist: failed to load video metadata', { id: i.id, path: i.path, error: err })
+    })
 
   loadVideoMetadataPLimit(() => getStreamInfo(i.path))
     .then(info => {
       i.streamInfo = info
+    })
+    .catch(err => {
+      logger.error('Playlist: failed to load stream info', { id: i.id, path: i.path, error: err })
     })
 }
 
@@ -133,8 +145,13 @@ const hideDeletePlaylistItemModal = () => {
 const deleteItem = async () => {
   if (currentPlaylistItem.value) {
     logger.debug('Playlist: deleting item', { id: currentPlaylistItem.value.id, title: currentPlaylistItem.value.title })
-    await window.go.internal.PlayerService.DeletePlaylistItem(currentPlaylistItem.value.id)
-    deletePlaylistItem(currentPlaylistItem.value.id)
+    try {
+      await window.go.internal.PlayerService.DeletePlaylistItem(currentPlaylistItem.value.id)
+      deletePlaylistItem(currentPlaylistItem.value.id)
+    } catch (err) {
+      showErrorModal('Could not delete playlist item.')
+      logger.error('Playlist: failed to delete item:', err)
+    }
   }
 
   hideDeletePlaylistItemModal()
@@ -189,10 +206,20 @@ const updatePlaylistItemOrder = async (event: { moved: { element: PlaylistItem; 
     logger.debug('Playlist: update item order', { elementId: element.id, oldIndex, newIndex })
     const { rebalanceOrder } = setPlaylistItemNewOrder(element, oldIndex, newIndex)
 
-    await window.go.internal.PlayerService.UpdatePlaylistItem(element.id, { order_index: element.orderIndex })
+    try {
+      await window.go.internal.PlayerService.UpdatePlaylistItem(element.id, { order_index: element.orderIndex })
+    } catch (err) {
+      showErrorModal('Could not update item order.')
+      logger.error('Playlist: failed to update item order:', err)
+    }
 
     if (rebalanceOrder) {
-      await window.go.internal.PlayerService.RebalancePlaylistOrder(playlistState.id)
+      try {
+        await window.go.internal.PlayerService.RebalancePlaylistOrder(playlistState.id)
+      } catch (err) {
+        showErrorModal('Could not rebalance playlist order.')
+        logger.error('Playlist: failed to rebalance playlist order:', err)
+      }
     }
   }
 }

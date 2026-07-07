@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { Modal } from 'bootstrap'
+import { logger } from '@renderer/utils/logger'
 
 const emit = defineEmits<{
   close: []
@@ -14,6 +15,7 @@ const status = ref('')
 const progressPercent = ref(0)
 const installing = ref(false)
 const success = ref(false)
+const errors = ref<string[]>([])
 const cleanups: (() => void)[] = []
 
 onMounted(() => {
@@ -27,14 +29,20 @@ onMounted(() => {
       if (typeof p.percent === 'number') {
         progressPercent.value = Math.round(p.percent)
       }
-    } catch {}
+    } catch (e) {
+      errors.value.push('Failed to read install progress.')
+      logger.error('InstallPluginDialog: failed to parse install progress:', e)
+    }
   }))
 
   cleanups.push(window.runtime.EventsOn('plugin-install-log', (data: string) => {
     try {
       const p = JSON.parse(data)
       if (p.message) status.value = p.message
-    } catch {}
+    } catch (e) {
+      errors.value.push('Failed to read install log.')
+      logger.error('InstallPluginDialog: failed to parse install log:', e)
+    }
   }))
 
   cleanups.push(window.runtime.EventsOn('plugin-install-complete', () => {
@@ -58,7 +66,8 @@ async function installFromURL() {
     await (window as any).go.main.App.InstallPluginFromURL(url.value)
     emit('installed')
   } catch (e: any) {
-    status.value = 'Error: ' + (e?.message || e)
+    errors.value.push('Failed to install plugin from URL.')
+    logger.error('InstallPluginDialog: failed to install from URL:', e)
     installing.value = false
   }
 }
@@ -77,7 +86,8 @@ async function pickAndInstall() {
     await (window as any).go.main.App.InstallPluginFromFile(filePath)
     emit('installed')
   } catch (e: any) {
-    status.value = 'Error: ' + (e?.message || e)
+    errors.value.push('Failed to install plugin from file.')
+    logger.error('InstallPluginDialog: failed to install from file:', e)
     installing.value = false
   }
 }
@@ -170,6 +180,7 @@ async function pickAndInstall() {
               ></div>
             </div>
           </div>
+          <div v-for="(err, i) in errors" :key="i" class="text-danger small mt-1">{{ err }}</div>
         </div>
         <div class="modal-footer border-secondary">
           <button v-if="success" type="button" class="btn btn-success btn-sm" data-bs-dismiss="modal">

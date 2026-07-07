@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { Modal } from 'bootstrap'
 import { BrowserOpenURL } from '@wailsjs/runtime/runtime'
+import { logger } from '@renderer/utils/logger'
 
 const emit = defineEmits<{
   close: []
@@ -10,6 +11,7 @@ const emit = defineEmits<{
 const modalRef = ref<HTMLDivElement>()
 const appVersion = ref('')
 const releaseYear = ref('')
+const errors = ref<string[]>([])
 
 const GITHUB_URL = 'https://github.com/QuickOrBeDead/graftik-video-player'
 const GITHUB_PROFILE = 'https://github.com/QuickOrBeDead'
@@ -21,8 +23,18 @@ onMounted(async () => {
   modal.show()
   modalRef.value!.addEventListener('hidden.bs.modal', () => emit('close'))
 
-  appVersion.value = await (window as any).go.main.App.GetAppVersion() as string
-  releaseYear.value = await (window as any).go.main.App.GetReleaseYear() as string
+  try {
+    appVersion.value = await (window as any).go.main.App.GetAppVersion() as string
+  } catch (e: any) {
+    errors.value.push('Could not retrieve app version.')
+    logger.error('AboutDialog: failed to get app version:', e)
+  }
+  try {
+    releaseYear.value = await (window as any).go.main.App.GetReleaseYear() as string
+  } catch (e: any) {
+    errors.value.push('Could not retrieve release information.')
+    logger.error('AboutDialog: failed to get release year:', e)
+  }
 })
 
 function openLink(url: string) {
@@ -59,6 +71,7 @@ function openLink(url: string) {
                   <i class="bi bi-file-text"></i> MIT License
                 </a>
               </p>
+              <div v-for="(err, i) in errors" :key="i" class="text-danger small" style="font-size: 0.7rem;">{{ err }}</div>
               <div class="small text-secondary" style="font-size: 0.8rem;">
                 Copyright &copy; 2026<span v-if="releaseYear !== '2026'"> - {{ releaseYear }}</span>
               </div>

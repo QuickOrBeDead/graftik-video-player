@@ -12,12 +12,12 @@ type ThumbnailDataStore struct {
 	cacheFolder string
 }
 
-func NewThumbnailDataStore(userDataPath string) *ThumbnailDataStore {
+func NewThumbnailDataStore(userDataPath string) (*ThumbnailDataStore, error) {
 	folder := filepath.Join(userDataPath, "thumbnails")
 	if err := os.MkdirAll(folder, 0755); err != nil {
-		panic(fmt.Sprintf("failed to create thumbnail cache dir: %v", err))
+		return nil, fmt.Errorf("failed to create thumbnail cache dir: %w", err)
 	}
-	return &ThumbnailDataStore{cacheFolder: folder}
+	return &ThumbnailDataStore{cacheFolder: folder}, nil
 }
 
 func (s *ThumbnailDataStore) ensurePlaylistFolder(playlistID string) (string, error) {
@@ -65,7 +65,9 @@ func (s *ThumbnailDataStore) SetThumbnail(playlistID, itemID, fileHash string, d
 	}
 
 	entries, err := os.ReadDir(playlistPath)
-	if err == nil {
+	if err != nil {
+		fmt.Printf("thumbnail: failed to read playlist dir for cleanup: %v\n", err)
+	} else {
 		prefix := fmt.Sprintf("%s-", itemID)
 		for _, entry := range entries {
 			if !entry.IsDir() && len(entry.Name()) > len(prefix) && entry.Name()[:len(prefix)] == prefix && filepath.Ext(entry.Name()) == ".jpeg" {

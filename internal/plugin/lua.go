@@ -280,8 +280,11 @@ func (p *LuaPlugin) hostEmit(L *lua.LState) int {
 	data := L.Get(2)
 	jsonData := toJSON(L, data)
 	p.log.Debug("lua: host emit", "plugin", p.Manifest.ID, "event", name)
-	if eventSink != nil {
-		eventSink(name, jsonData)
+	eventSinkMu.Lock()
+	fn := eventSink
+	eventSinkMu.Unlock()
+	if fn != nil {
+		fn(name, jsonData)
 	}
 	return 0
 }
@@ -290,20 +293,31 @@ func (p *LuaPlugin) hostAddToPlaylist(L *lua.LState) int {
 	path := L.CheckString(1)
 	title := L.OptString(2, "")
 	p.log.Debug("lua: host addToPlaylist", "plugin", p.Manifest.ID, "path", path, "title", title)
-	if addToPlaylistFn != nil {
-		addToPlaylistFn(path, title)
+	addToPlaylistFnMu.Lock()
+	fn := addToPlaylistFn
+	addToPlaylistFnMu.Unlock()
+	if fn != nil {
+		fn(path, title)
 	}
 	return 0
 }
 
-var eventSink func(event string, data string)
-var addToPlaylistFn func(path, title string)
+var (
+	eventSinkMu      sync.Mutex
+	eventSink        func(event string, data string)
+	addToPlaylistFnMu sync.Mutex
+	addToPlaylistFn   func(path, title string)
+)
 
 func SetEventSink(fn func(event string, data string)) {
+	eventSinkMu.Lock()
+	defer eventSinkMu.Unlock()
 	eventSink = fn
 }
 
 func SetAddToPlaylistFn(fn func(path, title string)) {
+	addToPlaylistFnMu.Lock()
+	defer addToPlaylistFnMu.Unlock()
 	addToPlaylistFn = fn
 }
 
