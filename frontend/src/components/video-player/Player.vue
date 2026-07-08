@@ -446,7 +446,7 @@ function speedDown() {
                     >
                     </div>
 
-                    <span class="small font-monospace ms-3 text-secondary">{{ timestampLabel }}</span>
+                    <span class="small font-monospace ms-3 text-white fw-bold">{{ timestampLabel }}</span>
                 </div>
 
                 <!-- Right Controls (Updated Order) -->

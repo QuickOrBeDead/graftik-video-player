@@ -206,14 +206,13 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 	if thumbnail != "" {
 		s.log.Debug("GetPlaylistItemVideoMetadata: thumbnail cache hit", "fileHash", fileHash, "playlistItemID", playlistItemID)
 		duration := s.probeDuration(videoPath)
-		s.log.Debug("GetPlaylistItemVideoMetadata: returning result", "duration", duration, "fileSize", fileSize)
 		md := &data.VideoMetadata{
 			Duration:     duration,
 			LastModified: lastModified,
 			FileSize:     fileSize,
 			Thumbnail:    thumbnail,
 		}
-		s.log.Debug("GetPlaylistItemVideoMetadata: finished", "result", md)
+		s.log.Debug("GetPlaylistItemVideoMetadata: finished", "duration", md.Duration, "fileSize", md.FileSize, "lastModified", md.LastModified)
 		return md
 	}
 
@@ -259,7 +258,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 			FileSize:     fileSize,
 			Thumbnail:    "",
 		}
-		s.log.Debug("GetPlaylistItemVideoMetadata: finished", "result", md)
+		s.log.Debug("GetPlaylistItemVideoMetadata: finished", "duration", md.Duration, "fileSize", md.FileSize, "lastModified", md.LastModified)
 		return md
 	}
 
@@ -274,7 +273,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 			FileSize:     fileSize,
 			Thumbnail:    "",
 		}
-		s.log.Debug("GetPlaylistItemVideoMetadata: finished", "result", md)
+		s.log.Debug("GetPlaylistItemVideoMetadata: finished", "duration", md.Duration, "fileSize", md.FileSize, "lastModified", md.LastModified)
 		return md
 	}
 
@@ -288,7 +287,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 		FileSize:     fileSize,
 		Thumbnail:    "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(imageData),
 	}
-	s.log.Debug("GetPlaylistItemVideoMetadata: finished", "result", md)
+	s.log.Debug("GetPlaylistItemVideoMetadata: finished", "duration", md.Duration, "fileSize", md.FileSize, "lastModified", md.LastModified)
 	return md
 }
 
