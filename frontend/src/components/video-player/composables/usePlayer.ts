@@ -212,7 +212,7 @@ export function usePlayer() {
       }
     }
 
-    const playVideo = async (videoSrc: string, currentTime: number, playlistItemId?: string) => {
+    const playVideo = async (videoSrc: string, currentTime: number, playlistItemId?: string, isPlaying?: boolean) => {
       logger.debug('playVideo', { videoSrc, currentTime, playlistItemId })
       state.playlistItemId = playlistItemId
       state.currentTime = currentTime
@@ -239,7 +239,7 @@ export function usePlayer() {
       }
 
       state.videoSrc = url
-      state.isPlaying = true
+      state.isPlaying = isPlaying ?? false
       logger.debug('playVideo: video source set', url)
     }
 

@@ -47,7 +47,7 @@ watch(
       setPlaylist(newData)
 
       const currentPlaylistItem = getCurrentPlaylistItem()
-      if (currentPlaylistItem && playerState.shouldAutoplay) {
+      if (currentPlaylistItem) {
         nextTick(async () => {
           await playItem(currentPlaylistItem)
         })
@@ -116,12 +116,12 @@ const getStreamInfo = async (videoPath: string): Promise<StreamInfo | undefined>
   }
 }
 
-const playItem = async (item: PlaylistItem) => {
+const playItem = async (item: PlaylistItem, forceStart?: boolean) => {
   logger.debug('Playlist: play item', { id: item.id, title: item.title })
   emit("beforePlaylistItemChange")
 
   const restartTime = item.progressPercent !== undefined && item.progressPercent >= 100 ? 0 : (item.elapsedTime ?? 0)
-  await playVideo(item.path, restartTime, item.id)
+  await playVideo(item.path, restartTime, item.id, forceStart ? true : item.isPlaying)
   setPlaylistCurrentItem(item.id)
 }
 
@@ -176,7 +176,7 @@ const showContextMenu = (e: MouseEvent, item: PlaylistItem) => {
           if (item.isPlaying && playerState.isPlaying) {
             pause()
           } else {
-            await playItem(item)
+            await playItem(item, true)
           }
         }
       },
@@ -282,7 +282,7 @@ const updatePlaylistItemOrder = async (event: { moved: { element: PlaylistItem; 
           <div
             :class="{ active: element.id === playlistState.currentItem }"
             class="playlist-item"
-            @click="async () => await playItem(element)"
+            @click="async () => await playItem(element, true)"
             @contextmenu="(e) => showContextMenu(e, element)"
           >
             <div class="playlist-item-thumb">
