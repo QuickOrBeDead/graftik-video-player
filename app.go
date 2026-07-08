@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,6 +26,13 @@ import (
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+type AppSettings struct {
+	LogLevel    string                   `json:"logLevel"`
+	LogToFile   bool                     `json:"logToFile"`
+	LogFilePath string                   `json:"logFilePath"`
+	LogRotation *graftikLogger.LogRotation `json:"logRotation,omitempty"`
+}
+
 type App struct {
 	ctx             context.Context
 	Service         *internal.PlayerService
@@ -39,11 +47,22 @@ type App struct {
 	updateETag      string
 	log             graftikLogger.Logger
 	prober          *media.Prober
+	appConfig       AppSettings
 }
 
-func NewApp(log graftikLogger.Logger) (*App, error) {
+func NewApp(log graftikLogger.Logger, appConfigData []byte) (*App, error) {
 	if log == nil {
 		panic("app: logger is required")
+	}
+
+	var appCfg AppSettings
+	if len(appConfigData) > 0 {
+		if err := json.Unmarshal(appConfigData, &appCfg); err != nil {
+			log.Warn("app: failed to parse app.json, using defaults", "error", err)
+		}
+	}
+	if appCfg.LogLevel == "" {
+		appCfg.LogLevel = "warn"
 	}
 	userDataDir, err := os.UserConfigDir()
 	appDataDir := ""
@@ -92,6 +111,7 @@ func NewApp(log graftikLogger.Logger) (*App, error) {
 		pluginsDir:     pluginsDir,
 		log:            log,
 		prober:         prober,
+		appConfig:      appCfg,
 	}, nil
 }
 
@@ -133,24 +153,29 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.log.Debug("app: default playlist ready")
 
-	// Apply log config from preferences if available
-	if preferences := a.store.GetPreferences(); preferences != nil {
-		level := graftikLogger.LevelDebug
-		if preferences.LogLevel != "" {
-			level = graftikLogger.ParseLevel(preferences.LogLevel)
-		}
-		if !preferences.Debug {
-			level = graftikLogger.LevelInfo
-		}
-		a.log.(*graftikLogger.DefaultLogger).SetLevel(level)
+	// Apply log config from embedded app.json
+	level := graftikLogger.ParseLevel(a.appConfig.LogLevel)
+	a.log.(*graftikLogger.DefaultLogger).SetLevel(level)
 
-		if preferences.LogToFile {
-			logPath := filepath.Join(appDataDir, "logs", "app.log")
+	if a.appConfig.LogToFile {
+		logPath := a.appConfig.LogFilePath
+		if logPath == "" {
+			filename := fmt.Sprintf("app-%s.log", time.Now().Format("2006-01-02"))
+			logPath = filepath.Join(appDataDir, "logs", filename)
+		}
+		if a.appConfig.LogRotation != nil {
+			if err := a.log.(*graftikLogger.DefaultLogger).AddFileHandler(logPath, *a.appConfig.LogRotation); err != nil {
+				a.log.Warn("failed to enable file logging", "path", logPath, "error", err)
+			}
+		} else {
 			if err := a.log.(*graftikLogger.DefaultLogger).AddFileHandler(logPath); err != nil {
 				a.log.Warn("failed to enable file logging", "path", logPath, "error", err)
 			}
 		}
+	}
 
+	// Restore window size from preferences
+	if preferences := a.store.GetPreferences(); preferences != nil {
 		if w, h := preferences.WindowWidth, preferences.WindowHeight; w > 0 && h > 0 {
 			wailsRuntime.WindowSetSize(ctx, w, h)
 		}

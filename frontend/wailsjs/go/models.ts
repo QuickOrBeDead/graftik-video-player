@@ -13,9 +13,6 @@ export namespace data {
 	    isPlaying: boolean;
 	    lastPlayedItem: string;
 	    includePrereleasesForUpdates: boolean;
-	    debug: boolean;
-	    logLevel: string;
-	    logToFile: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -35,9 +32,6 @@ export namespace data {
 	        this.isPlaying = source["isPlaying"];
 	        this.lastPlayedItem = source["lastPlayedItem"];
 	        this.includePrereleasesForUpdates = source["includePrereleasesForUpdates"];
-	        this.debug = source["debug"];
-	        this.logLevel = source["logLevel"];
-	        this.logToFile = source["logToFile"];
 	    }
 	}
 	export class PlaylistItemDto {

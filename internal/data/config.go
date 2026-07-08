@@ -22,9 +22,6 @@ type AppConfig struct {
 	IsPlaying                    bool    `json:"isPlaying"`
 	LastPlayedItem               string  `json:"lastPlayedItem"`
 	IncludePrereleasesForUpdates bool    `json:"includePrereleasesForUpdates"`
-	Debug                        bool    `json:"debug"`
-	LogLevel                     string  `json:"logLevel"`
-	LogToFile                    bool    `json:"logToFile"`
 }
 
 type ConfigStore struct {
@@ -103,9 +100,6 @@ func (c *ConfigStore) GetPreferences() *AppConfig {
 		IsPlaying:                    c.config.IsPlaying,
 		LastPlayedItem:               c.config.LastPlayedItem,
 		IncludePrereleasesForUpdates: c.config.IncludePrereleasesForUpdates,
-		Debug:                        c.config.Debug,
-		LogLevel:                     c.config.LogLevel,
-		LogToFile:                    c.config.LogToFile,
 	}
 }
 
@@ -164,21 +158,6 @@ func (c *ConfigStore) UpdateSettings(settings map[string]any) error {
 	if v, ok := settings["includePrereleasesForUpdates"]; ok {
 		if val, ok := v.(bool); ok {
 			c.config.IncludePrereleasesForUpdates = val
-		}
-	}
-	if v, ok := settings["debug"]; ok {
-		if val, ok := v.(bool); ok {
-			c.config.Debug = val
-		}
-	}
-	if v, ok := settings["logLevel"]; ok {
-		if val, ok := v.(string); ok {
-			c.config.LogLevel = val
-		}
-	}
-	if v, ok := settings["logToFile"]; ok {
-		if val, ok := v.(bool); ok {
-			c.config.LogToFile = val
 		}
 	}
 	return c.Save()

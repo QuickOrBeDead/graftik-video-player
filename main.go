@@ -22,6 +22,9 @@ var assets embed.FS
 //go:embed build/appicon.png
 var appIcon []byte
 
+//go:embed app.json
+var appConfigData []byte
+
 var readyToClose = make(chan bool)
 
 func (app *App) SetReadyToClose() {
@@ -41,7 +44,7 @@ func main() {
 		LogDir:    logDir,
 	})
 
-	app, err := NewApp(log)
+	app, err := NewApp(log, appConfigData)
 	if err != nil {
 		log.Error("failed to initialize app", "error", err)
 		return

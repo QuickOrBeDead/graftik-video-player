@@ -109,6 +109,22 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
+      - name: Override app.json for production
+        shell: bash
+        run: |
+          cat > app.json << 'EOF'
+          {
+            "logLevel": "warn",
+            "logToFile": true,
+            "logFilePath": "",
+            "logRotation": {
+              "maxSizeMB": 10,
+              "maxBackups": 3,
+              "maxAgeDays": 7
+            }
+          }
+          EOF
+
       - name: Build
         run: wails build -platform ${{ matrix.platform }} -clean -tags webkit2_41 -ldflags "-X main.appVersion=${{ steps.version.outputs.value }}" ${{ matrix.nsis }}
         env:

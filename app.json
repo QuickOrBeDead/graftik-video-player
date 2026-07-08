@@ -1,0 +1,10 @@
+{
+  "logLevel": "warn",
+  "logToFile": false,
+  "logFilePath": "/tmp/graftik-video-player-dev.log",
+  "logRotation": {
+    "maxSizeMB": 10,
+    "maxBackups": 3,
+    "maxAgeDays": 7
+  }
+}

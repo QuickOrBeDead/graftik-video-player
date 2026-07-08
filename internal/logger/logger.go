@@ -3,12 +3,15 @@ package logger
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
@@ -28,11 +31,17 @@ type Logger interface {
 
 type FrontendSink func(level slog.Level, msg string, attrs ...slog.Attr)
 
+type LogRotation struct {
+	MaxSizeMB  int `json:"maxSizeMB"`
+	MaxBackups int `json:"maxBackups"`
+	MaxAgeDays int `json:"maxAgeDays"`
+}
+
 type DefaultLogger struct {
 	*slog.Logger
 	level        slog.Leveler
 	frontendSink FrontendSink
-	file         *os.File
+	file         io.Closer
 	mu           sync.Mutex
 	buffered     []LogEntry
 	flushed      bool
@@ -116,18 +125,9 @@ func (l *DefaultLogger) SetFrontendSink(sink FrontendSink) {
 	l.flushed = true
 }
 
-func (l *DefaultLogger) AddFileHandler(path string) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return err
-	}
-	handler := slog.NewTextHandler(file, &slog.HandlerOptions{
-		Level:     l.level,
+func newHandlerOpts(level slog.Leveler) *slog.HandlerOptions {
+	return &slog.HandlerOptions{
+		Level: level,
 		AddSource: true,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.SourceKey {
@@ -137,11 +137,38 @@ func (l *DefaultLogger) AddFileHandler(path string) error {
 			}
 			return a
 		},
-	})
+	}
+}
+
+func (l *DefaultLogger) AddFileHandler(path string, rotation ...LogRotation) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+
+	var w io.WriteCloser
+	if len(rotation) > 0 && (rotation[0].MaxSizeMB > 0 || rotation[0].MaxBackups > 0 || rotation[0].MaxAgeDays > 0) {
+		r := &rotation[0]
+		w = &lumberjack.Logger{
+			Filename:   path,
+			MaxSize:    r.MaxSizeMB,
+			MaxBackups: r.MaxBackups,
+			MaxAge:     r.MaxAgeDays,
+		}
+	} else {
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+		w = file
+	}
+
+	handler := slog.NewTextHandler(w, newHandlerOpts(l.level))
 	if mh, ok := l.Handler().(*multiHandler); ok {
 		mh.handlers = append(mh.handlers, handler)
 	}
-	l.file = file
+	l.file = w
 	return nil
 }
 
