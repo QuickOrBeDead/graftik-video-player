@@ -27,8 +27,7 @@ const state = reactive<PlayerState>({
     showProgressBarHoverPreview: false,
     isSidebarResizing: false,
     sidebarWidth: 300,
-    streamId: '',
-    shouldAutoplay: false
+    streamId: ''
 })
 
 export function usePlayer() {
@@ -251,7 +250,6 @@ export function usePlayer() {
       state.playbackRate = preferences.playbackRate
       state.sidebarVisible = preferences.sidebarVisible
       state.sidebarWidth = preferences.sidebarWidth
-      state.shouldAutoplay = preferences.isPlaying
     }
 
     const setSidebarWidth = (width: number) => {

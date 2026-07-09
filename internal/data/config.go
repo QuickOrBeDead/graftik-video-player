@@ -19,8 +19,6 @@ type AppConfig struct {
 	SidebarWidth                 int     `json:"sidebarWidth"`
 	WindowWidth                  int     `json:"windowWidth"`
 	WindowHeight                 int     `json:"windowHeight"`
-	IsPlaying                    bool    `json:"isPlaying"`
-	LastPlayedItem               string  `json:"lastPlayedItem"`
 	IncludePrereleasesForUpdates bool    `json:"includePrereleasesForUpdates"`
 }
 
@@ -97,8 +95,6 @@ func (c *ConfigStore) GetPreferences() *AppConfig {
 		SidebarWidth:                 c.config.SidebarWidth,
 		WindowWidth:                  c.config.WindowWidth,
 		WindowHeight:                 c.config.WindowHeight,
-		IsPlaying:                    c.config.IsPlaying,
-		LastPlayedItem:               c.config.LastPlayedItem,
 		IncludePrereleasesForUpdates: c.config.IncludePrereleasesForUpdates,
 	}
 }
@@ -143,16 +139,6 @@ func (c *ConfigStore) UpdateSettings(settings map[string]any) error {
 	if v, ok := settings["windowHeight"]; ok {
 		if val, ok := v.(float64); ok {
 			c.config.WindowHeight = int(val)
-		}
-	}
-	if v, ok := settings["isPlaying"]; ok {
-		if val, ok := v.(bool); ok {
-			c.config.IsPlaying = val
-		}
-	}
-	if v, ok := settings["lastPlayedItem"]; ok {
-		if val, ok := v.(string); ok {
-			c.config.LastPlayedItem = val
 		}
 	}
 	if v, ok := settings["includePrereleasesForUpdates"]; ok {

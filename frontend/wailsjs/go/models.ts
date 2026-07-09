@@ -10,8 +10,6 @@ export namespace data {
 	    sidebarWidth: number;
 	    windowWidth: number;
 	    windowHeight: number;
-	    isPlaying: boolean;
-	    lastPlayedItem: string;
 	    includePrereleasesForUpdates: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -29,8 +27,6 @@ export namespace data {
 	        this.sidebarWidth = source["sidebarWidth"];
 	        this.windowWidth = source["windowWidth"];
 	        this.windowHeight = source["windowHeight"];
-	        this.isPlaying = source["isPlaying"];
-	        this.lastPlayedItem = source["lastPlayedItem"];
 	        this.includePrereleasesForUpdates = source["includePrereleasesForUpdates"];
 	    }
 	}

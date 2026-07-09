@@ -117,9 +117,7 @@ Mousetrap `^1.6.5` is already a dependency but **not wired**. The toolbar toolti
 **Implementation:** Add a `keydown` event listener in `Player.vue` (or `usePlayer` composable) that maps keys to existing composable actions.
 
 #### 2. Session Restore (Playback Position)
-The app saves `elapsedTime` per item and `lastPlayedItem` in preferences, but **does not restore playback position on startup**. `shouldAutoplay` is already wired.
-
-**Implementation:** In `Main.vue` after `loadPlaylist()`, compare the current playlist's items with the saved `lastPlayedItem` — if matched, seek the video to that item's `elapsedTime` via `handleProgressBarHover` or direct `currentTime` set.
+The app saves `elapsedTime` per item in preferences, but **does not restore playback position on startup**. (Completed — restored via `isPlaying` on playlist items instead.)
 
 #### 3. Documentation Cleanup
 - **`README.md`** — Still says "An Electron application with Vue and TypeScript" and references nonexistent npm scripts. Rewrite to describe the Wails-based app.

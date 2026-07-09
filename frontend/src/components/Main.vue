@@ -40,7 +40,6 @@ function scheduleSave(data: Record<string, any>) {
 }
 
 onMounted(async () => {
-  // Load preferences first so isPlaying state is known before playlist loads
   try {
     const prefs = await window.go.internal.PlayerService.GetPreferences()
     if (prefs) {
@@ -116,10 +115,6 @@ watch(() => playerState.volumeLevel, (v) => scheduleSave({ volumeLevel: v }))
 watch(() => playerState.playbackRate, (v) => scheduleSave({ playbackRate: v }))
 watch(() => playerState.sidebarVisible, (v) => scheduleSave({ sidebarVisible: v }))
 watch(() => playerState.sidebarWidth, (v) => scheduleSave({ sidebarWidth: v }))
-watch(() => playerState.isPlaying, (v) => scheduleSave({ isPlaying: v }))
-watch(() => playlistState.currentItem, (v) => {
-  if (v) scheduleSave({ lastPlayedItem: v })
-})
 
 const loadPlaylist = async () => {
   try {

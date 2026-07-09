@@ -306,7 +306,7 @@ const onVideoEnded = async () => {
     if (nextItem) {
       logger.debug('Player: playing next item', { id: nextItem.id, title: nextItem.title })
       const restartTime = playerState.repeat === RepeatMode.One ? 0 : (nextItem.elapsedTime ?? 0)
-      await playVideo(nextItem.path, restartTime, nextItem.id)
+      await playVideo(nextItem.path, restartTime, nextItem.id, true)
       setPlaylistCurrentItem(nextItem.id)
     } else {
       logger.debug('Player: no next item, pausing')

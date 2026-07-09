@@ -66,8 +66,6 @@ declare global {
             sidebarWidth: number
             windowWidth: number
             windowHeight: number
-            isPlaying: boolean
-            lastPlayedItem: string
           }>
           SavePreferences: (settings: Record<string, any>) => Promise<void>
         }

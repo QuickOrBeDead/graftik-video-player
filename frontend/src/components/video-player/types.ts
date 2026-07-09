@@ -20,7 +20,6 @@ export interface PlayerState {
     isSidebarResizing: boolean,
     sidebarWidth: number,
     streamId: string,
-    shouldAutoplay: boolean
 }
 
 export enum RepeatMode {
@@ -108,6 +107,4 @@ export interface AppPreferences {
   sidebarWidth: number
   windowWidth: number
   windowHeight: number
-  isPlaying: boolean
-  lastPlayedItem: string
 }
