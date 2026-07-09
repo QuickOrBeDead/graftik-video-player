@@ -16,7 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const props = defineProps<{ playlist: Playlist | null }>()
-const { playerState, playVideo, calculatePercent, pause } = usePlayer()
+const { playerState, playVideo, calculatePercent, cleanVideo, pause } = usePlayer()
 const {
   playlistState,
   filteredPlaylist,
@@ -144,13 +144,19 @@ const hideDeletePlaylistItemModal = () => {
 
 const deleteItem = async () => {
   if (currentPlaylistItem.value) {
-    logger.debug('Playlist: deleting item', { id: currentPlaylistItem.value.id, title: currentPlaylistItem.value.title })
+    const isCurrentItem = currentPlaylistItem.value.id === playlistState.currentItem
+    logger.debug('Playlist: deleting item', { id: currentPlaylistItem.value.id, title: currentPlaylistItem.value.title, isCurrentItem })
+
     try {
       await window.go.internal.PlayerService.DeletePlaylistItem(currentPlaylistItem.value.id)
       deletePlaylistItem(currentPlaylistItem.value.id)
     } catch (err) {
       showErrorModal('Could not delete playlist item.')
       logger.error('Playlist: failed to delete item:', err)
+    }
+
+    if (isCurrentItem) {
+      await cleanVideo()
     }
   }
 

@@ -3,7 +3,7 @@ import { onMounted, ref, inject } from 'vue'
 import { Modal } from 'bootstrap'
 import { logger } from '@renderer/utils/logger'
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; deleted: [id: string] }>()
 
 const modalRef = ref<HTMLDivElement>()
 const playlists = ref<{ name: string; id: string }[]>()
@@ -77,9 +77,11 @@ async function savePlaylist() {
 }
 
 async function deletePlaylist() {
+  const deletedId = currentPlaylist.value.id
   try {
-    await window.go.internal.PlayerService.DeletePlaylist(currentPlaylist.value.id)
+    await window.go.internal.PlayerService.DeletePlaylist(deletedId)
     await loadPlaylists()
+    emit('deleted', deletedId)
   } catch (err) {
     showErrorModal('Could not delete playlist.')
     logger.error('Playlists: failed to delete playlist:', err)

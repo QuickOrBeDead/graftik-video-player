@@ -128,6 +128,8 @@ watch(() => playerState.videoSrc, async (newVideoSrc, oldVideoSrc) => {
   v.pause()
 
   if (!newVideoSrc) {
+    v.removeAttribute('src')
+    v.load()
     isChangingSource = false
     return
   }

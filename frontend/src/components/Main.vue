@@ -14,8 +14,8 @@ import AboutDialog from './AboutDialog.vue'
 import type { PluginInfo } from '@renderer/data/plugin'
 import { logger } from '@renderer/utils/logger'
 
-const { playerState, applyPreferences } = usePlayer()
-const { playlistState } = usePlaylist()
+const { playerState, cleanVideo, applyPreferences } = usePlayer()
+const { playlistState, resetPlaylist, savePlaylistItemProgress } = usePlaylist()
 
 const playlist = ref<Playlist | null>(null)
 const showPlaylistsModal = ref(false)
@@ -53,7 +53,9 @@ onMounted(async () => {
 
   await loadPlaylist()
 
-  window.runtime.EventsOn('load-current-playlist', (p: unknown) => {
+  window.runtime.EventsOn('load-current-playlist', async (p: unknown) => {
+    await saveCurrentProgress()
+    await cleanVideo()
     if (p) {
       setPlaylist(p as DbPlaylist)
       logger.debug('[LOAD:PLAYLIST] Received load-current-playlist event:', p)
@@ -119,6 +121,8 @@ watch(() => playerState.sidebarWidth, (v) => scheduleSave({ sidebarWidth: v }))
 const loadPlaylist = async () => {
   try {
     const dbPlaylist = await window.go.internal.PlayerService.GetCurrentPlaylist() as DbPlaylist | null
+    await saveCurrentProgress()
+    await cleanVideo()
     if (dbPlaylist) {
       setPlaylist(dbPlaylist)
       logger.debug('[LOAD:PLAYLIST] Loaded playlist:', dbPlaylist)
@@ -154,6 +158,22 @@ const setPlaylist = (dbPlaylist: DbPlaylist) => {
   }
 }
 
+const saveCurrentProgress = async () => {
+  if (playlistState.currentItem) {
+    logger.debug('[SAVE:PLAYLIST-SWITCH] Saving current item progress:', { itemId: playlistState.currentItem })
+    await savePlaylistItemProgress(playlistState.currentItem, playerState.currentTime, playerState.duration, playerState.isPlaying)
+  }
+}
+
+const onPlaylistDeleted = async (deletedId: string) => {
+  if (playlistState.id === deletedId) {
+    logger.debug('[CLEAN:PLAYLIST] Current playlist deleted, cleaning up')
+    await cleanVideo()
+    resetPlaylist()
+    playlist.value = null
+  }
+}
+
 function showErrorModal(msg: string) {
   errorMessage.value = msg
   if (errorModalRef.value) {
@@ -181,7 +201,7 @@ function onOpenPlugin(plugin: PluginInfo, action: string) {
   >
     <i class="bi bi-arrow-up-circle-fill"></i>
   </div>
-  <PlaylistsModal v-if="showPlaylistsModal" @close="showPlaylistsModal = false" />
+  <PlaylistsModal v-if="showPlaylistsModal" @close="showPlaylistsModal = false" @deleted="onPlaylistDeleted" />
   <NewPlaylistModal v-if="showNewPlaylistModal" @close="showNewPlaylistModal = false" />
   <PluginPanel v-if="showPluginPanel" @close="showPluginPanel = false" @openPlugin="onOpenPlugin" />
   <PluginUIHost v-if="activePluginUI" :plugin="activePluginUI" @close="activePluginUI = null" />

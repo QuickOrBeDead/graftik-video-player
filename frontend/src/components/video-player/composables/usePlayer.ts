@@ -211,6 +211,20 @@ export function usePlayer() {
       }
     }
 
+    const cleanVideo = async () => {
+      logger.debug('cleanVideo')
+      state.isPlaying = false
+      state.currentTime = 0
+      state.duration = 0
+      state.videoSrc = ''
+      state.seekTime = 0
+      if (state.streamId) {
+        const oldStreamId = state.streamId
+        state.streamId = ''
+        await stopHlsStream(oldStreamId)
+      }
+    }
+
     const playVideo = async (videoSrc: string, currentTime: number, playlistItemId?: string, isPlaying?: boolean) => {
       logger.debug('playVideo', { videoSrc, currentTime, playlistItemId })
       state.playlistItemId = playlistItemId
@@ -279,6 +293,7 @@ export function usePlayer() {
       togglePlay,
       play,
       pause,
+      cleanVideo,
       playVideo,
       setVolume,
       setPlaybackRate,

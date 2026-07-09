@@ -258,11 +258,37 @@ export function usePlaylist() {
     state.shuffledDeck = []
   }
 
+  const savePlaylistItemProgress = async (itemId: string | undefined, currentTime: number, duration: number, isPlaying: boolean) => {
+    if (!itemId) return
+    const progress = duration > 0 ? (currentTime / duration) * 100 : 0
+    const data: Record<string, any> = {
+      elapsed_time: currentTime,
+      duration,
+      progress_percent: progress,
+      is_playing: isPlaying,
+      last_watched: Date.now()
+    }
+
+    await window.go.internal.PlayerService.UpdatePlaylistItem(itemId, data)
+  }
+
+  const resetPlaylist = () => {
+    logger.debug('resetPlaylist')
+    state.id = ''
+    state.name = ''
+    state.items = []
+    state.currentItem = undefined
+    state.currentPlaylistItem = undefined
+    state.shuffledDeck = []
+  }
+
   return {
     playlistState: state,
     filteredPlaylist,
     viewModeClass,
     setPlaylist,
+    resetPlaylist,
+    savePlaylistItemProgress,
     changeViewMode,
     deletePlaylistItem,
     toggleShowOnlyUnwatched,
