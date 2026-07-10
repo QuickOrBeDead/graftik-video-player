@@ -22,6 +22,10 @@ export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }
 
+export function GetLogLevel() {
+  return window['go']['main']['App']['GetLogLevel']();
+}
+
 export function GetPluginFile(arg1, arg2) {
   return window['go']['main']['App']['GetPluginFile'](arg1, arg2);
 }

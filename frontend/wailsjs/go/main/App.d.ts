@@ -16,6 +16,8 @@ export function ExecutePluginAction(arg1:string,arg2:string,arg3:string):Promise
 
 export function GetAppVersion():Promise<string>;
 
+export function GetLogLevel():Promise<string>;
+
 export function GetPluginFile(arg1:string,arg2:string):Promise<string>;
 
 export function GetPlugins():Promise<Array<plugin.PluginInfo>>;

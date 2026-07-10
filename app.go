@@ -119,6 +119,10 @@ func (a *App) Logger() graftikLogger.Logger {
 	return a.log
 }
 
+func (a *App) GetLogLevel() string {
+	return a.appConfig.LogLevel
+}
+
 func (a *App) startup(ctx context.Context) {
 	a.log.Debug("app: starting up")
 	a.ctx = ctx
