@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
 	"graftik-wails/internal/logger"
 
@@ -33,15 +35,42 @@ func (app *App) SetReadyToClose() {
 }
 
 func main() {
+	type appJsonConfig struct {
+		LogLevel    string                `json:"logLevel"`
+		LogToFile   bool                  `json:"logToFile"`
+		LogFilePath string                `json:"logFilePath"`
+		LogRotation *logger.LogRotation   `json:"logRotation,omitempty"`
+	}
+
+	var cfg appJsonConfig
+	if len(appConfigData) > 0 {
+		if err := json.Unmarshal(appConfigData, &cfg); err != nil {
+			panic("failed to parse app.json: " + err.Error())
+		}
+	}
+
 	logDir := ""
-	if userDataDir, err := os.UserConfigDir(); err == nil {
-		logDir = filepath.Join(userDataDir, "graftik-video-player", "logs")
+	logFilename := ""
+	if cfg.LogToFile {
+		if cfg.LogFilePath != "" {
+			logDir = filepath.Dir(cfg.LogFilePath)
+			logFilename = filepath.Base(cfg.LogFilePath)
+		} else {
+			userDataDir, err := os.UserConfigDir()
+			if err != nil {
+				panic("failed to get user config dir: " + err.Error())
+			}
+			logDir = filepath.Join(userDataDir, "graftik-video-player", "logs")
+			logFilename = "app-" + time.Now().Format("2006-01-02") + ".log"
+		}
 	}
 
 	log := logger.New(logger.LogConfig{
-		Level:     logger.LevelDebug,
-		LogToFile: false,
-		LogDir:    logDir,
+		Level:       logger.ParseLevel(cfg.LogLevel),
+		LogToFile:   cfg.LogToFile,
+		LogDir:      logDir,
+		LogFilename: logFilename,
+		Rotation:    cfg.LogRotation,
 	})
 
 	app, err := NewApp(log, appConfigData)

@@ -153,27 +153,6 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.log.Debug("app: default playlist ready")
 
-	// Apply log config from embedded app.json
-	level := graftikLogger.ParseLevel(a.appConfig.LogLevel)
-	a.log.(*graftikLogger.DefaultLogger).SetLevel(level)
-
-	if a.appConfig.LogToFile {
-		logPath := a.appConfig.LogFilePath
-		if logPath == "" {
-			filename := fmt.Sprintf("app-%s.log", time.Now().Format("2006-01-02"))
-			logPath = filepath.Join(appDataDir, "logs", filename)
-		}
-		if a.appConfig.LogRotation != nil {
-			if err := a.log.(*graftikLogger.DefaultLogger).AddFileHandler(logPath, *a.appConfig.LogRotation); err != nil {
-				a.log.Warn("failed to enable file logging", "path", logPath, "error", err)
-			}
-		} else {
-			if err := a.log.(*graftikLogger.DefaultLogger).AddFileHandler(logPath); err != nil {
-				a.log.Warn("failed to enable file logging", "path", logPath, "error", err)
-			}
-		}
-	}
-
 	// Restore window size from preferences
 	if preferences := a.store.GetPreferences(); preferences != nil {
 		if w, h := preferences.WindowWidth, preferences.WindowHeight; w > 0 && h > 0 {

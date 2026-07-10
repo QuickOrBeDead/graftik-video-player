@@ -39,7 +39,7 @@ type LogRotation struct {
 
 type DefaultLogger struct {
 	*slog.Logger
-	level        slog.Leveler
+	level        *slog.LevelVar
 	frontendSink FrontendSink
 	file         io.Closer
 	mu           sync.Mutex
@@ -52,13 +52,18 @@ type LogConfig struct {
 	LogToFile   bool
 	LogDir      string
 	LogFilename string
+	Rotation    *LogRotation
 }
 
 func New(cfg LogConfig) *DefaultLogger {
 	var handlers []slog.Handler
 
+	l := &DefaultLogger{}
+	l.level = &slog.LevelVar{}
+	l.level.Set(cfg.Level)
+
 	opts := &slog.HandlerOptions{
-		Level: cfg.Level,
+		Level: l.level,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.SourceKey {
 				if src, ok := a.Value.Any().(*slog.Source); ok {
@@ -73,34 +78,43 @@ func New(cfg LogConfig) *DefaultLogger {
 	textHandler := slog.NewTextHandler(os.Stderr, opts)
 	handlers = append(handlers, textHandler)
 
-	l := &DefaultLogger{
-		level: cfg.Level,
-	}
-
 	if cfg.LogToFile && cfg.LogDir != "" {
-		if err := os.MkdirAll(cfg.LogDir, 0755); err == nil {
-			filename := cfg.LogFilename
-			if filename == "" {
-				filename = "app.log"
+		if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {
+			panic("logger: failed to create log dir: " + err.Error())
+		}
+		filename := cfg.LogFilename
+		if filename == "" {
+			filename = "app.log"
+		}
+		logPath := filepath.Join(cfg.LogDir, filename)
+
+		var w io.WriteCloser
+		maxSize, maxBackups, maxAge := 1, 10, 30
+		if cfg.Rotation != nil {
+			if cfg.Rotation.MaxSizeMB > 0 {
+				maxSize = cfg.Rotation.MaxSizeMB
 			}
-			logPath := filepath.Join(cfg.LogDir, filename)
-			file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-			if err == nil {
-				fileHandler := slog.NewTextHandler(file, opts)
-				handlers = append(handlers, fileHandler)
-				l.file = file
+			if cfg.Rotation.MaxBackups > 0 {
+				maxBackups = cfg.Rotation.MaxBackups
+			}
+			if cfg.Rotation.MaxAgeDays > 0 {
+				maxAge = cfg.Rotation.MaxAgeDays
 			}
 		}
+		w = &lumberjack.Logger{
+			Filename:   logPath,
+			MaxSize:    maxSize,
+			MaxBackups: maxBackups,
+			MaxAge:     maxAge,
+		}
+
+		fileHandler := slog.NewTextHandler(w, opts)
+		handlers = append(handlers, fileHandler)
+		l.file = w
 	}
 
 	l.Logger = slog.New(&multiHandler{handlers: handlers, logger: l})
 	return l
-}
-
-func (l *DefaultLogger) SetLevel(level slog.Level) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.level = level
 }
 
 func (l *DefaultLogger) Close() error {
@@ -123,53 +137,6 @@ func (l *DefaultLogger) SetFrontendSink(sink FrontendSink) {
 	}
 	l.buffered = nil
 	l.flushed = true
-}
-
-func newHandlerOpts(level slog.Leveler) *slog.HandlerOptions {
-	return &slog.HandlerOptions{
-		Level: level,
-		AddSource: true,
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.SourceKey {
-				if src, ok := a.Value.Any().(*slog.Source); ok {
-					a.Value = slog.StringValue(fmt.Sprintf("%s:%d", filepath.Base(src.File), src.Line))
-				}
-			}
-			return a
-		},
-	}
-}
-
-func (l *DefaultLogger) AddFileHandler(path string, rotation ...LogRotation) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-
-	var w io.WriteCloser
-	if len(rotation) > 0 && (rotation[0].MaxSizeMB > 0 || rotation[0].MaxBackups > 0 || rotation[0].MaxAgeDays > 0) {
-		r := &rotation[0]
-		w = &lumberjack.Logger{
-			Filename:   path,
-			MaxSize:    r.MaxSizeMB,
-			MaxBackups: r.MaxBackups,
-			MaxAge:     r.MaxAgeDays,
-		}
-	} else {
-		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			return err
-		}
-		w = file
-	}
-
-	handler := slog.NewTextHandler(w, newHandlerOpts(l.level))
-	if mh, ok := l.Handler().(*multiHandler); ok {
-		mh.handlers = append(mh.handlers, handler)
-	}
-	l.file = w
-	return nil
 }
 
 func (l *DefaultLogger) sendToFrontend(level slog.Level, msg string, attrs []slog.Attr) {
@@ -264,7 +231,7 @@ func ParseLevel(s string) slog.Level {
 	case "error":
 		return LevelError
 	default:
-		return LevelInfo
+		return LevelWarn
 	}
 }
 
