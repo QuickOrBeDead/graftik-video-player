@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
 	"time"
@@ -300,18 +301,20 @@ func (s *PlayerService) RebalancePlaylistOrder(id string) {
 func (s *PlayerService) OpenContainingFolder(filePath string) {
 	s.log.Debug("OpenContainingFolder: started", "filePath", filePath)
 
+	dir := filepath.Dir(filePath)
+
 	switch goruntime.GOOS {
 	case "windows":
-		if err := command.CreateHiddenCmd("explorer", "/select,", filePath).Start(); err != nil {
-			s.log.Error("OpenContainingFolder: failed to open explorer", "path", filePath, "error", err)
+		if err := exec.Command("explorer", "select,", dir).Start(); err != nil {
+			s.log.Error("OpenContainingFolder: failed to open explorer", "path", dir, "error", err)
 		}
 	case "darwin":
-		if err := command.CreateHiddenCmd("open", "-R", filePath).Start(); err != nil {
-			s.log.Error("OpenContainingFolder: failed to open finder", "path", filePath, "error", err)
+		if err := exec.Command("open", "-R", dir).Start(); err != nil {
+			s.log.Error("OpenContainingFolder: failed to open finder", "path", dir, "error", err)
 		}
 	default:
-		if err := command.CreateHiddenCmd("xdg-open", filepath.Dir(filePath)).Start(); err != nil {
-			s.log.Error("OpenContainingFolder: failed to open xdg-open", "path", filepath.Dir(filePath), "error", err)
+		if err := exec.Command("xdg-open", dir).Start(); err != nil {
+			s.log.Error("OpenContainingFolder: failed to open xdg-open", "path", dir, "error", err)
 		}
 	}
 

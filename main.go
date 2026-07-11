@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/QuickOrBeDead/graftik-video-player/internal/logger"
@@ -15,6 +16,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -27,19 +29,20 @@ var appIcon []byte
 //go:embed app.json
 var appConfigData []byte
 
-var readyToClose = make(chan bool)
+var isClosing atomic.Bool
 
 func (app *App) SetReadyToClose() {
-	app.log.Debug("App: SetReadyToClose is called")
-	readyToClose <- true
+	app.log.Debug("App: UI ready, SetReadyToClose is called, quiting application.")
+	isClosing.Store(true)
+	runtime.Quit(app.ctx)
 }
 
 func main() {
 	type appJsonConfig struct {
-		LogLevel    string                `json:"logLevel"`
-		LogToFile   bool                  `json:"logToFile"`
-		LogFilePath string                `json:"logFilePath"`
-		LogRotation *logger.LogRotation   `json:"logRotation,omitempty"`
+		LogLevel    string              `json:"logLevel"`
+		LogToFile   bool                `json:"logToFile"`
+		LogFilePath string              `json:"logFilePath"`
+		LogRotation *logger.LogRotation `json:"logRotation,omitempty"`
 	}
 
 	var cfg appJsonConfig
@@ -106,12 +109,15 @@ func main() {
 			Icon:                appIcon,
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
+			if isClosing.Load() {
+				log.Debug("Main: Wails app on before close: UI finised it's job. Closing app.")
+				return false
+			}
+
 			log.Debug("Main: Wails app on before close: start emit before-app-close event")
 			wailsRuntime.EventsEmit(ctx, "before-app-close")
 			log.Debug("Main: Wails app on before close: emit before-app-close event finished")
-			<-readyToClose
-			log.Debug("Main: Wails app on before close: readyToClose signal received. Closing app.")
-			return false
+			return true
 		},
 	})
 
