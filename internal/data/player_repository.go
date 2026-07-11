@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	_ "modernc.org/sqlite"
-	graftikLogger "graftik-wails/internal/logger"
+	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 )
 
 type PlayerRepository struct {

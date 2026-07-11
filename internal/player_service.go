@@ -8,15 +8,15 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
 	"time"
 
-	"graftik-wails/internal/data"
-	"graftik-wails/internal/hls"
-	graftikLogger "graftik-wails/internal/logger"
-	"graftik-wails/internal/media"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/command"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/data"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/hls"
+	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/media"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -234,7 +234,7 @@ func (s *PlayerService) GetPlaylistItemVideoMetadata(playlistID, playlistItemID,
 	defer os.Remove(tempFile)
 
 	var ffmpegStderr bytes.Buffer
-	extractCmd := exec.Command(s.ffmpegPath,
+	extractCmd := command.CreateHiddenCmd(s.ffmpegPath,
 		"-ss", fmt.Sprintf("%.1f", seekTime),
 		"-i", videoPath,
 		"-vframes", "1",
@@ -302,15 +302,15 @@ func (s *PlayerService) OpenContainingFolder(filePath string) {
 
 	switch goruntime.GOOS {
 	case "windows":
-		if err := exec.Command("explorer", "/select,", filePath).Start(); err != nil {
+		if err := command.CreateHiddenCmd("explorer", "/select,", filePath).Start(); err != nil {
 			s.log.Error("OpenContainingFolder: failed to open explorer", "path", filePath, "error", err)
 		}
 	case "darwin":
-		if err := exec.Command("open", "-R", filePath).Start(); err != nil {
+		if err := command.CreateHiddenCmd("open", "-R", filePath).Start(); err != nil {
 			s.log.Error("OpenContainingFolder: failed to open finder", "path", filePath, "error", err)
 		}
 	default:
-		if err := exec.Command("xdg-open", filepath.Dir(filePath)).Start(); err != nil {
+		if err := command.CreateHiddenCmd("xdg-open", filepath.Dir(filePath)).Start(); err != nil {
 			s.log.Error("OpenContainingFolder: failed to open xdg-open", "path", filepath.Dir(filePath), "error", err)
 		}
 	}
@@ -394,7 +394,7 @@ func (s *PlayerService) SavePreferences(settings map[string]any) {
 func (s *PlayerService) probeDuration(videoPath string) float64 {
 	s.log.Debug("probeDuration: started", "videoPath", videoPath)
 	var ffprobeStderr bytes.Buffer
-	cmd := exec.Command(s.ffprobePath,
+	cmd := command.CreateHiddenCmd(s.ffprobePath,
 		"-v", "quiet",
 		"-print_format", "json",
 		"-show_format",

@@ -3,11 +3,11 @@ package media
 import (
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 
-	"graftik-wails/internal/data"
-	graftikLogger "graftik-wails/internal/logger"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/command"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/data"
+	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 )
 
 type Prober struct {
@@ -41,7 +41,7 @@ type ffprobeFormat struct {
 func (p *Prober) Probe(ffprobePath, videoPath string) (*data.StreamInfo, error) {
 	p.log.Debug("media: probing file", "ffprobePath", ffprobePath, "videoPath", videoPath)
 
-	cmd := exec.Command(ffprobePath,
+	cmd := command.CreateHiddenCmd(ffprobePath,
 		"-v", "quiet",
 		"-print_format", "json",
 		"-show_format",
@@ -222,7 +222,7 @@ func (p *Prober) classifyStream(formatName string, streams []ffprobeStream) (act
 
 func (p *Prober) DetectHWEncoder(ffmpegPath string) string {
 	p.log.Debug("media: detecting hardware encoder", "ffmpegPath", ffmpegPath)
-	cmd := exec.Command(ffmpegPath, "-encoders")
+	cmd := command.CreateHiddenCmd(ffmpegPath, "-encoders")
 	output, err := cmd.Output()
 	if err != nil {
 		p.log.Debug("media: failed to run ffmpeg -encoders", "error", err)

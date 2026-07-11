@@ -9,7 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	graftikLogger "graftik-wails/internal/logger"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/command"
+	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -185,7 +186,7 @@ func (p *LuaPlugin) hostExec(L *lua.LState) int {
 		onExit, _ = fn.(*lua.LFunction)
 	}
 
-	cmd := exec.Command(binary, args...)
+	cmd := command.CreateHiddenCmd(binary, args...)
 	if len(env) > 0 {
 		cmd.Env = append(os.Environ(), env...)
 	}
@@ -303,8 +304,8 @@ func (p *LuaPlugin) hostAddToPlaylist(L *lua.LState) int {
 }
 
 var (
-	eventSinkMu      sync.Mutex
-	eventSink        func(event string, data string)
+	eventSinkMu       sync.Mutex
+	eventSink         func(event string, data string)
 	addToPlaylistFnMu sync.Mutex
 	addToPlaylistFn   func(path, title string)
 )

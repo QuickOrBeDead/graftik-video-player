@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
-	graftikLogger "graftik-wails/internal/logger"
+	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 )
 
 type PlayerDataStore struct {

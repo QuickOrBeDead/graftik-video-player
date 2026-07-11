@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"graftik-wails/internal/data"
-	graftikLogger "graftik-wails/internal/logger"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/command"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/data"
+	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 
 	"github.com/google/uuid"
 )
@@ -61,7 +62,7 @@ func (e *Engine) StartStream(path string, info *data.StreamInfo) (string, error)
 
 	e.log.Debug("hls: starting stream", "streamID", streamID, "input", path, "action", info.Action)
 
-	cmd := exec.Command(e.ffmpegPath, args...)
+	cmd := command.CreateHiddenCmd(e.ffmpegPath, args...)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 

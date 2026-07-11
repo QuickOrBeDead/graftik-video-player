@@ -15,7 +15,8 @@ import (
 	"sync"
 	"time"
 
-	graftikLogger "graftik-wails/internal/logger"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/command"
+	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 )
 
 type Instance struct {
@@ -374,7 +375,7 @@ func (m *Manager) launch(ctx context.Context, cfg *DiscoveryConfig, hostPort int
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	cmd := exec.CommandContext(ctx, exePath, args...)
+	cmd := command.CreateHiddenCmdContext(ctx, exePath, args...)
 	cmd.Dir = dir
 
 	stdout, err := cmd.StdoutPipe()

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"graftik-wails/internal/logger"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"

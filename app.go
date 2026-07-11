@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"graftik-wails/internal"
-	"graftik-wails/internal/data"
-	"graftik-wails/internal/hls"
-	graftikLogger "graftik-wails/internal/logger"
-	"graftik-wails/internal/media"
-	"graftik-wails/internal/plugin"
+	"github.com/QuickOrBeDead/graftik-video-player/internal"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/data"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/hls"
+	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/media"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/plugin"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"

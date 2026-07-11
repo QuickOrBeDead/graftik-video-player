@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	graftikLogger "graftik-wails/internal/logger"
+	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 )
 
 //go:embed migrations/*.sql
