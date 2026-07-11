@@ -98,9 +98,9 @@
 ### Must-Have (for v0.1.0-beta.1)
 
 #### 1. Keyboard Shortcuts
-Mousetrap `^1.6.5` is already a dependency but **not wired**. The toolbar tooltips reference keyboard shortcuts that don't work.
+Mousetrap `^1.6.5` is already a dependency and **wired** in `Player.vue:80-92`.
 
-**Required bindings:**
+**Bound keys:**
 | Key | Action |
 |---|---|
 | Space | Play/Pause |
@@ -108,13 +108,14 @@ Mousetrap `^1.6.5` is already a dependency but **not wired**. The toolbar toolti
 | Right Arrow | Skip forward 10s |
 | F | Fullscreen toggle |
 | M | Mute toggle |
-| P | Picture-in-Picture toggle |
+| I | Picture-in-Picture toggle |
 | S | Shuffle toggle |
 | R | Repeat mode cycle |
 | N | Next video |
-| Shift+N | Previous video |
-
-**Implementation:** Add a `keydown` event listener in `Player.vue` (or `usePlayer` composable) that maps keys to existing composable actions.
+| P | Previous video |
+| T | Toggle playlist sidebar |
+| + | Speed up |
+| - | Speed down |
 
 #### 2. Session Restore (Playback Position)
 The app saves `elapsedTime` per item in preferences, but **does not restore playback position on startup**. (Completed — restored via `isPlaying` on playlist items instead.)
