@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts,.vue --fix",
     "format": "prettier --write .",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@imengyu/vue3-context-menu": "^1.5.4",
@@ -26,12 +28,15 @@
   "devDependencies": {
     "@types/bootstrap": "^5.2.11",
     "@types/mousetrap": "^1.6.15",
+    "@types/node": "^26.1.1",
     "@vitejs/plugin-vue": "^6.0.7",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.7.0",
     "eslint-plugin-vue": "^10.9.2",
     "prettier": "^3.9.5",
     "typescript": "^6.0.3",
     "vite": "^8.1.4",
+    "vitest": "^4.1.10",
     "vue-tsc": "^3.3.7"
   }
 }

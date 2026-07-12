@@ -4,22 +4,14 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
+	"github.com/google/uuid"
 )
 
 type PlayerDataStore struct {
 	repo   *PlayerRepository
 	config *ConfigStore
 	log    graftikLogger.Logger
-}
-
-type addItemInput struct {
-	ID         string
-	PlaylistID string
-	Path       string
-	Title      string
-	OrderIndex float64
 }
 
 func NewPlayerDataStore(userDataPath, dbPath string, log graftikLogger.Logger) (*PlayerDataStore, error) {

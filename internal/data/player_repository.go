@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	_ "modernc.org/sqlite"
 	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
+	_ "modernc.org/sqlite"
 )
 
 type PlayerRepository struct {
@@ -139,12 +139,12 @@ func (r *PlayerRepository) GetPlaylistProjection(id string, columns []string) (m
 	row := r.db.QueryRow(query, id)
 
 	values := make([]any, len(columns))
-	ptrs := make([]any, len(columns))
+	valuePointers := make([]any, len(columns))
 	for i := range values {
-		ptrs[i] = &values[i]
+		valuePointers[i] = &values[i]
 	}
 
-	if err := row.Scan(ptrs...); err != nil {
+	if err := row.Scan(valuePointers...); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}

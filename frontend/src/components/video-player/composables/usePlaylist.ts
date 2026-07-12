@@ -140,27 +140,29 @@ export function usePlaylist() {
     logger.debug('setPlaylistItemNewOrder', { elementId: element.id, oldIndex, newIndex })
     const items = state.items
 
-    // calculate index by Fractional Indexing. nexIndex = (prev + next) / 2
-    function calculateNewIndex() {
-      let newOrderIndex: number
-      if (newIndex === 0) {
-        newOrderIndex = items.length === 0 ? 1000 : (items[0].orderIndex / 2)
-      } else if (newIndex >= items.length - 1) {
-        newOrderIndex = items[newIndex].orderIndex + 1000
-      } else {
-        newOrderIndex = (items[newIndex].orderIndex + items[newIndex + 1].orderIndex) / 2
-      }
-      return newOrderIndex
-    }
-
     function moveElement(el: PlaylistItem) {
       items.splice(oldIndex, 1)
       items.splice(newIndex, 0, el)
     }
 
+    moveElement(element)
+
+    // calculate index by Fractional Indexing after splice so neighbors are correct
+    function calculateNewIndex(): number {
+      if (items.length <= 1) {
+        return 1000
+      }
+      if (newIndex === 0) {
+        return items[1].orderIndex / 2
+      }
+      if (newIndex >= items.length - 1) {
+        return items[newIndex - 1].orderIndex + 1000
+      }
+      return (items[newIndex - 1].orderIndex + items[newIndex + 1].orderIndex) / 2
+    }
+
     const newOrderIndex: number = calculateNewIndex()
     element.orderIndex = newOrderIndex
-    moveElement(element)
 
     const prevOrder = items[newIndex]?.orderIndex ?? 0
     const nextOrder = newIndex >= items.length - 1 ? newOrderIndex + 1000 : items[newIndex + 1]?.orderIndex ?? (newOrderIndex + 1000)
@@ -170,7 +172,7 @@ export function usePlaylist() {
     const rebalance = gap < 1e-12
 
     if (rebalance) {
-      items.forEach((v, i) => { v.orderIndex = i + 1000 })
+      items.forEach((v, i) => { v.orderIndex = (i+1) * 1000 })
     }
 
     return {
