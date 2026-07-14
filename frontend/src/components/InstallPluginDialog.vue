@@ -31,7 +31,7 @@ onMounted(() => {
       }
     } catch (e) {
       errors.value.push('Failed to read install progress.')
-      logger.error('InstallPluginDialog: failed to parse install progress:', e)
+      logger.error('InstallPluginDialog: failed to parse install progress', 'error', e)
     }
   }))
 
@@ -41,7 +41,7 @@ onMounted(() => {
       if (p.message) status.value = p.message
     } catch (e) {
       errors.value.push('Failed to read install log.')
-      logger.error('InstallPluginDialog: failed to parse install log:', e)
+      logger.error('InstallPluginDialog: failed to parse install log', 'error', e)
     }
   }))
 
@@ -67,7 +67,7 @@ async function installFromURL() {
     emit('installed')
   } catch (e: any) {
     errors.value.push('Failed to install plugin from URL.')
-    logger.error('InstallPluginDialog: failed to install from URL:', e)
+    logger.error('InstallPluginDialog: failed to install from URL', 'error', e)
     installing.value = false
   }
 }
@@ -87,7 +87,7 @@ async function pickAndInstall() {
     emit('installed')
   } catch (e: any) {
     errors.value.push('Failed to install plugin from file.')
-    logger.error('InstallPluginDialog: failed to install from file:', e)
+    logger.error('InstallPluginDialog: failed to install from file', 'error', e)
     installing.value = false
   }
 }

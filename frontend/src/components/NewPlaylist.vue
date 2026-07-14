@@ -25,7 +25,7 @@ async function add() {
     }
   } catch (err) {
     error.value = 'Could not add playlist.'
-    logger.error('NewPlaylist: failed to add playlist:', err)
+    logger.error('NewPlaylist: failed to add playlist', 'error', err)
   }
 }
 </script>

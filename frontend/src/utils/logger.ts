@@ -1,3 +1,5 @@
+import { Log as sendToBackend } from '../../wailsjs/go/main/App'
+
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error'
 
 export interface LogEntry {
@@ -29,6 +31,8 @@ class FrontendLogger {
   private nextId = 0
   private listeners: Set<LogCallback> = new Set()
   private prefix = '[Graftik]'
+  private backendReady = false
+  private sendBuffer: Array<{ level: LogLevel; msg: string; attrs: Record<string, unknown> }> = []
 
   setLevel(level: LogLevel) {
     this.level = level
@@ -52,24 +56,24 @@ class FrontendLogger {
     this.notifyListeners()
   }
 
-  trace(...args: unknown[]) {
-    this.log('trace', args, false)
+  trace(msg: string, ...args: unknown[]) {
+    this.log('trace', msg, args, false)
   }
 
-  debug(...args: unknown[]) {
-    this.log('debug', args, false)
+  debug(msg: string, ...args: unknown[]) {
+    this.log('debug', msg, args, false)
   }
 
-  info(...args: unknown[]) {
-    this.log('info', args, false)
+  info(msg: string, ...args: unknown[]) {
+    this.log('info', msg, args, false)
   }
 
-  warn(...args: unknown[]) {
-    this.log('warn', args, false)
+  warn(msg: string, ...args: unknown[]) {
+    this.log('warn', msg, args, false)
   }
 
-  error(...args: unknown[]) {
-    this.log('error', args, false)
+  error(msg: string, ...args: unknown[]) {
+    this.log('error', msg, args, false)
   }
 
   fromBackend(entry: { level: string; message: string; time?: string; source?: string; attrs?: Record<string, unknown> }) {
@@ -96,10 +100,19 @@ class FrontendLogger {
     this.notifyListeners()
   }
 
-  private log(level: LogLevel, args: unknown[], fromBackend: boolean) {
+  flushBuffer() {
+    this.backendReady = true
+    const pending = this.sendBuffer.splice(0)
+    for (const entry of pending) {
+      this.sendToBackend(entry.level, entry.msg, entry.attrs)
+    }
+  }
+
+  private log(level: LogLevel, msg: string, args: unknown[], fromBackend: boolean) {
     if (!this.shouldLog(level)) return
 
-    const message = args.map(a => (typeof a === 'object' ? this.safeStringify(a) : String(a))).join(' ')
+    const argsStr = args.map(a => (typeof a === 'object' ? this.safeStringify(a) : String(a))).join(' ')
+    const message = argsStr ? `${msg} ${argsStr}` : msg
     const logEntry: LogEntry = {
       id: this.nextId++,
       time: new Date(),
@@ -114,9 +127,26 @@ class FrontendLogger {
     }
 
     const consoleFn = console[level] || console.log
-    consoleFn(this.prefix, ...args)
+    consoleFn(this.prefix, msg, ...args)
+
+    if (!fromBackend) {
+      const attrs: Record<string, unknown> = {}
+      for (let i = 0; i < args.length; i += 2) {
+        attrs[String(args[i])] = i + 1 < args.length ? args[i + 1] : true
+      }
+      this.sendToBackend(level, msg, attrs)
+    }
 
     this.notifyListeners()
+  }
+
+  private sendToBackend(level: LogLevel, msg: string, attrs?: Record<string, unknown>) {
+    if (!this.backendReady) {
+      this.sendBuffer.push({ level, msg, attrs: attrs || {} })
+      return
+    }
+
+    sendToBackend(level, msg, attrs || {})
   }
 
   private shouldLog(level: LogLevel): boolean {

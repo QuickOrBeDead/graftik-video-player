@@ -29,7 +29,7 @@ async function loadPlugins() {
     plugins.value = (await window.go.main.App.GetPlugins()) as PluginInfo[]
   } catch (err) {
     error.value = 'Could not load plugins.'
-    logger.error('PluginPanel: failed to load plugins:', err)
+    logger.error('PluginPanel: failed to load plugins', 'error', err)
   }
 }
 

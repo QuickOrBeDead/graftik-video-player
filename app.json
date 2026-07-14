@@ -1,6 +1,6 @@
 {
-  "logLevel": "warn",
-  "logToFile": false,
+  "logLevel": "debug",
+  "logToFile": true,
   "logFilePath": "/tmp/graftik-video-player-dev.log",
   "logRotation": {
     "maxSizeMB": 10,

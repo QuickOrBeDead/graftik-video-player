@@ -27,7 +27,7 @@ async function loadPlaylists() {
     playlists.value = (await window.go.internal.PlayerService.GetPlaylists()) as { name: string; id: string }[]
   } catch (err) {
     showErrorModal('Could not load playlists.')
-    logger.error('Playlists: failed to load playlists:', err)
+    logger.error('Playlists: failed to load playlists', 'error', err)
   }
 }
 
@@ -72,7 +72,7 @@ async function savePlaylist() {
     hideEditModal()
   } catch (err) {
     showErrorModal('Could not save playlist.')
-    logger.error('Playlists: failed to save playlist:', err)
+    logger.error('Playlists: failed to save playlist', 'error', err)
   }
 }
 
@@ -84,7 +84,7 @@ async function deletePlaylist() {
     emit('deleted', deletedId)
   } catch (err) {
     showErrorModal('Could not delete playlist.')
-    logger.error('Playlists: failed to delete playlist:', err)
+    logger.error('Playlists: failed to delete playlist', 'error', err)
   }
 
   hideDeleteModal()
@@ -95,7 +95,7 @@ async function selectPlaylist(id: string) {
     await window.go.internal.PlayerService.SelectPlaylist(id)
   } catch (err) {
     showErrorModal('Could not select playlist.')
-    logger.error('Playlists: failed to select playlist:', err)
+    logger.error('Playlists: failed to select playlist', 'error', err)
   }
   if (modalRef.value) {
     const modal = Modal.getInstance(modalRef.value!)

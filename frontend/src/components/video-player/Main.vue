@@ -15,11 +15,11 @@ const { playlist } = defineProps<{
 
 watch(() => playlistState.currentItem, async (newCurrentItem, oldCurrentItem) => {
   if (playlistState.id && newCurrentItem && oldCurrentItem !== newCurrentItem) {
-    logger.debug('[SAVE:PLAYLIST-META] currentItem changed — updating playlist.current_item:', { playlistId: playlistState.id, currentItem: newCurrentItem })
+    logger.debug('[SAVE:PLAYLIST-META] currentItem changed — updating playlist.current_item', 'playlistId', playlistState.id, 'currentItem', newCurrentItem)
     try {
       await window.go.internal.PlayerService.UpdatePlaylist(playlistState.id, { current_item: newCurrentItem })
     } catch (err) {
-      logger.error('[SAVE:PLAYLIST-META] failed to update playlist:', err)
+      logger.error('[SAVE:PLAYLIST-META] failed to update playlist', 'error', err)
     }
   }
 })
@@ -43,7 +43,7 @@ window.runtime.EventsOn('before-app-close', async () => {
     await updatePlaylistItem(true)
     await window.go.main.App.SetReadyToClose()
   } catch (err) {
-    logger.error('[SAVE:BEFORE-CLOSE] failed:', err)
+    logger.error('[SAVE:BEFORE-CLOSE] failed', 'error', err)
   }
 })
 
@@ -54,7 +54,7 @@ window.onbeforeunload = () => {
       clearInterval(updatePlaylistCurrentItemIntervalId)
     }
   } catch (error) {
-    logger.error(error)
+    logger.error('clearInterval error', 'error', error)
   }
 }
 
@@ -85,11 +85,11 @@ const updatePlaylistItem = async (closing?: boolean) => {
     }
   }
 
-  logger.debug('[SAVE:ITEM] Saving playlist item data via UpdatePlaylistItem:', { itemId: playlistState.currentItem, data })
+  logger.debug('[SAVE:ITEM] Saving playlist item data', 'itemId', playlistState.currentItem, 'data', data)
   try {
     await window.go.internal.PlayerService.UpdatePlaylistItem(playlistState.currentItem, data)
   } catch (err) {
-    logger.error('[SAVE:ITEM] failed to update playlist item:', err)
+    logger.error('[SAVE:ITEM] failed to update playlist item', 'error', err)
   }
 }
 

@@ -38,7 +38,7 @@ onMounted(async () => {
       }
     } catch (e) {
       error.value = 'Could not parse download progress.'
-      logger.error('UpdateDialog: failed to parse download progress data:', e)
+      logger.error('UpdateDialog: failed to parse download progress data', 'error', e)
     }
   }))
 
@@ -46,7 +46,7 @@ onMounted(async () => {
     currentVersion.value = await (window as any).go.main.App.GetAppVersion() as string
   } catch (e) {
     error.value = 'Could not retrieve app version.'
-    logger.error('UpdateDialog: failed to get app version:', e)
+    logger.error('UpdateDialog: failed to get app version', 'error', e)
   }
 
   try {
@@ -56,7 +56,7 @@ onMounted(async () => {
     }
   } catch (e) {
     error.value = 'Could not load preferences.'
-    logger.error('UpdateDialog: failed to get preferences:', e)
+    logger.error('UpdateDialog: failed to get preferences', 'error', e)
   }
 
   await checkForUpdates()
@@ -79,7 +79,7 @@ async function checkForUpdates() {
   } catch (e: any) {
     status.value = 'Error checking for updates.'
     error.value = 'Could not check for updates.'
-    logger.error('UpdateDialog: failed to check for updates:', e)
+    logger.error('UpdateDialog: failed to check for updates', 'error', e)
   }
 }
 
@@ -97,7 +97,7 @@ async function downloadUpdate() {
   } catch (e: any) {
     status.value = 'Download failed.'
     error.value = 'Could not download update.'
-    logger.error('UpdateDialog: failed to download update:', e)
+    logger.error('UpdateDialog: failed to download update', 'error', e)
     downloading.value = false
   }
 }
@@ -115,7 +115,7 @@ async function installUpdate() {
   } catch (e: any) {
     status.value = 'Installation failed.'
     error.value = 'Could not install update.'
-    logger.error('UpdateDialog: failed to install update:', e)
+    logger.error('UpdateDialog: failed to install update', 'error', e)
     installing.value = false
   }
 }
@@ -125,7 +125,7 @@ async function onTogglePrerelease() {
     await (window as any).go.internal.PlayerService.SavePreferences({ includePrereleasesForUpdates: includePrerelease.value })
   } catch (e) {
     error.value = 'Could not save prerelease preference.'
-    logger.error('UpdateDialog: failed to save prerelease preference:', e)
+    logger.error('UpdateDialog: failed to save prerelease preference', 'error', e)
   }
   updateInfo.value = null
   error.value = ''

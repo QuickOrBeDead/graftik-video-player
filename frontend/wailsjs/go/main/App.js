@@ -58,6 +58,10 @@ export function InstallUpdate(arg1) {
   return window['go']['main']['App']['InstallUpdate'](arg1);
 }
 
+export function Log(arg1, arg2, arg3) {
+  return window['go']['main']['App']['Log'](arg1, arg2, arg3);
+}
+
 export function Logger() {
   return window['go']['main']['App']['Logger']();
 }

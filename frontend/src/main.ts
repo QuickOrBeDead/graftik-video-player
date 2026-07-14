@@ -17,3 +17,4 @@ if (level) {
 }
 
 createApp(App).use(ContextMenu).mount('#app')
+logger.flushBuffer()

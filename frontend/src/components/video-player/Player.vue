@@ -138,27 +138,27 @@ watch(() => playerState.videoSrc, async (newVideoSrc, oldVideoSrc) => {
 
   if (isHls) {
     if (Hls.isSupported()) {
-      logger.debug('Player: using HLS for video', newVideoSrc)
+      logger.debug('Player: using HLS for video', 'url', newVideoSrc)
       hlsInstance = new Hls()
       hlsInstance.loadSource(newVideoSrc)
       hlsInstance.attachMedia(v)
       hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
         logger.debug('Player: HLS manifest parsed')
         if (playerState.isPlaying) {
-          v.play().catch(e => logger.error('hls play:', e))
+          v.play().catch(e => logger.error('hls play', 'error', e))
         }
       })
     } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
-      logger.debug('Player: using native HLS playback', newVideoSrc)
+      logger.debug('Player: using native HLS playback', 'url', newVideoSrc)
       v.src = newVideoSrc
       v.load()
     }
   } else {
-    logger.debug('Player: using native video', newVideoSrc)
+    logger.debug('Player: using native video', 'url', newVideoSrc)
     v.src = newVideoSrc
     v.load()
   }
-  logger.debug('Player: video source changed', { from: oldVideoSrc, to: newVideoSrc, isHls })
+  logger.debug('Player: video source changed', 'from', oldVideoSrc, 'to', newVideoSrc, 'isHls', isHls)
 })
 
 watch(() => playerState.isPlaying, async (newPlaying, oldPlaying) => {
@@ -174,7 +174,7 @@ watch(() => playerState.isPlaying, async (newPlaying, oldPlaying) => {
       try {
         await v.play()
       } catch (e) {
-        logger.error('isPlaying watcher play():', e)
+        logger.error('isPlaying watcher play', 'error', e)
       }
     }
   } else {
@@ -214,7 +214,7 @@ const onVideoPause = () => {
 const onMetadataLoaded = () => {
   const v = videoPlayerElement.value
   if (!v) return
-  logger.debug('Player: metadata loaded', { duration: v.duration, videoWidth: v.videoWidth, videoHeight: v.videoHeight })
+  logger.debug('Player: metadata loaded', 'duration', v.duration, 'videoWidth', v.videoWidth, 'videoHeight', v.videoHeight)
 
   const { currentTime, playbackRate } = playerState
 
@@ -228,7 +228,7 @@ const onMetadataLoaded = () => {
       try {
         await v.play()
       } catch(e) {
-        logger.error('v.play()', e)
+        logger.error('v.play', 'error', e)
       }
     } else {
       v.pause()
@@ -251,7 +251,7 @@ const onVideoError = () => {
 
   const errorMessage = errorMap[v.error.code] || "An unknown video error occurred."
 
-  logger.error(`Video Error ${v.error.code}: ${errorMessage}`)
+  logger.error('Video Error', 'code', v.error.code, 'message', errorMessage)
 }
 
 const calculateVideoHeight = () => {
@@ -303,10 +303,10 @@ const progressBarClick = (e: PointerEvent) => {
 }
 
 const onVideoEnded = async () => {
-    logger.debug('Player: video ended', { repeat: playerState.repeat, shuffle: playerState.shuffle })
+    logger.debug('Player: video ended', 'repeat', playerState.repeat, 'shuffle', playerState.shuffle)
     const nextItem = getNextPlaylistItem(playerState.repeat, playerState.shuffle)
     if (nextItem) {
-      logger.debug('Player: playing next item', { id: nextItem.id, title: nextItem.title })
+      logger.debug('Player: playing next item', 'id', nextItem.id, 'title', nextItem.title)
       const restartTime = playerState.repeat === RepeatMode.One ? 0 : (nextItem.elapsedTime ?? 0)
       await playVideo(nextItem.path, restartTime, nextItem.id, true)
       setPlaylistCurrentItem(nextItem.id)
@@ -323,7 +323,7 @@ const playPreviousVideo = async () => {
     logger.debug('Player: play previous video')
     const prevItem = getPreviousPlaylistItem(playerState.repeat, playerState.shuffle)
     if (prevItem) {
-      logger.debug('Player: playing previous item', { id: prevItem.id, title: prevItem.title })
+      logger.debug('Player: playing previous item', 'id', prevItem.id, 'title', prevItem.title)
       await playVideo(prevItem.path, 0, prevItem.id)
       setPlaylistCurrentItem(prevItem.id)
     }
@@ -333,7 +333,7 @@ const playNextVideo = async () => {
     logger.debug('Player: play next video')
     const nextItem = getNextPlaylistItem(playerState.repeat, playerState.shuffle)
     if (nextItem) {
-      logger.debug('Player: playing next item', { id: nextItem.id, title: nextItem.title })
+      logger.debug('Player: playing next item', 'id', nextItem.id, 'title', nextItem.title)
       await playVideo(nextItem.path, 0, nextItem.id)
       setPlaylistCurrentItem(nextItem.id)
     }

@@ -34,7 +34,7 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleSave(data: Record<string, any>) {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
-    logger.debug('[SAVE:PREFERENCES] Saving preferences (500ms debounced):', data)
+    logger.debug('[SAVE:PREFERENCES] Saving preferences (500ms debounced)', 'data', data)
     window.go.internal.PlayerService.SavePreferences(data)
   }, 500)
 }
@@ -44,11 +44,11 @@ onMounted(async () => {
     const prefs = await window.go.internal.PlayerService.GetPreferences()
     if (prefs) {
       applyPreferences(prefs)
-      logger.debug('[LOAD:PREFERENCES] Preferences loaded:', prefs)
+      logger.debug('[LOAD:PREFERENCES] Preferences loaded', 'prefs', prefs)
     }
   } catch (e) {
     showErrorModal('Could not load preferences.')
-    logger.error('Load preferences error:', e)
+    logger.error('Load preferences error', 'error', e)
   }
 
   await loadPlaylist()
@@ -58,7 +58,7 @@ onMounted(async () => {
     await cleanVideo()
     if (p) {
       setPlaylist(p as DbPlaylist)
-      logger.debug('[LOAD:PLAYLIST] Received load-current-playlist event:', p)
+      logger.debug('[LOAD:PLAYLIST] Received load-current-playlist event', 'event', p)
     }
   })
 
@@ -68,7 +68,7 @@ onMounted(async () => {
         playlist.value.name = (await window.go.internal.PlayerService.GetPlaylistName(playlist.value.id)) as string
       } catch (err) {
         showErrorModal('Could not load playlist name.')
-        logger.error('Main: failed to load playlist name:', err)
+        logger.error('Main: failed to load playlist name', 'error', err)
       }
     }
   })
@@ -78,7 +78,7 @@ onMounted(async () => {
       await loadPlaylist()
     } catch (err) {
       showErrorModal('Could not load playlist.')
-      logger.error('Main: failed to load playlist:', err)
+      logger.error('Main: failed to load playlist', 'error', err)
     }
   })
 
@@ -125,11 +125,11 @@ const loadPlaylist = async () => {
     await cleanVideo()
     if (dbPlaylist) {
       setPlaylist(dbPlaylist)
-      logger.debug('[LOAD:PLAYLIST] Loaded playlist:', dbPlaylist)
+      logger.debug('[LOAD:PLAYLIST] Loaded playlist', 'playlist', dbPlaylist)
     }
   } catch (err) {
     showErrorModal('Could not load playlist.')
-    logger.error('Main: failed to load playlist:', err)
+    logger.error('Main: failed to load playlist', 'error', err)
   }
 }
 
@@ -160,7 +160,7 @@ const setPlaylist = (dbPlaylist: DbPlaylist) => {
 
 const saveCurrentProgress = async () => {
   if (playlistState.currentItem) {
-    logger.debug('[SAVE:PLAYLIST-SWITCH] Saving current item progress:', { itemId: playlistState.currentItem })
+    logger.debug('[SAVE:PLAYLIST-SWITCH] Saving current item progress', 'itemId', playlistState.currentItem)
     await savePlaylistItemProgress(playlistState.currentItem, playerState.currentTime, playerState.duration, playerState.isPlaying)
   }
 }

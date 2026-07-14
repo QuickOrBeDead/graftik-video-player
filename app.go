@@ -123,6 +123,14 @@ func (a *App) GetLogLevel() string {
 	return a.appConfig.LogLevel
 }
 
+func (a *App) Log(level string, message string, attrs map[string]any) {
+	var args []any
+	for k, v := range attrs {
+		args = append(args, k, v)
+	}
+	a.log.WriteToText(graftikLogger.ParseLevel(level), message, args...)
+}
+
 func (a *App) startup(ctx context.Context) {
 	a.log.Debug("app: starting up")
 	a.ctx = ctx

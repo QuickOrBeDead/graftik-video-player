@@ -34,6 +34,8 @@ export function InstallPluginFromURL(arg1:string):Promise<plugin.PluginInfo>;
 
 export function InstallUpdate(arg1:string):Promise<void>;
 
+export function Log(arg1:string,arg2:string,arg3:Record<string, any>):Promise<void>;
+
 export function Logger():Promise<logger.Logger>;
 
 export function PickDirectory():Promise<string>;

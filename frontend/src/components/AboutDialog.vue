@@ -27,13 +27,13 @@ onMounted(async () => {
     appVersion.value = await (window as any).go.main.App.GetAppVersion() as string
   } catch (e: any) {
     errors.value.push('Could not retrieve app version.')
-    logger.error('AboutDialog: failed to get app version:', e)
+    logger.error('AboutDialog: failed to get app version', 'error', e)
   }
   try {
     releaseYear.value = await (window as any).go.main.App.GetReleaseYear() as string
   } catch (e: any) {
     errors.value.push('Could not retrieve release information.')
-    logger.error('AboutDialog: failed to get release year:', e)
+    logger.error('AboutDialog: failed to get release year', 'error', e)
   }
 })
 

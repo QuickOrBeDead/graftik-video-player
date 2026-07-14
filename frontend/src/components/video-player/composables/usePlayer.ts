@@ -36,7 +36,7 @@ export function usePlayer() {
 
     const toggleShuffle = () => {
       state.shuffle = !state.shuffle
-      logger.debug('toggleShuffle', state.shuffle)
+      logger.debug('toggleShuffle', 'shuffle', state.shuffle)
     }
 
     const toggleControlsVisible = () => {
@@ -58,7 +58,7 @@ export function usePlayer() {
     const toggleRepeatMode = () => {
       const currentIndex = repeatModes.indexOf(state.repeat)
       state.repeat = repeatModes[(currentIndex + 1) % repeatModes.length]
-      logger.debug('toggleRepeatMode', state.repeat)
+      logger.debug('toggleRepeatMode', 'repeat', state.repeat)
     }
 
     const toggleMute = () => {
@@ -76,7 +76,7 @@ export function usePlayer() {
 
       state.volumeLevel = Math.max(0, Math.min(1, level))
       state.isMuted = state.volumeLevel === 0
-      logger.debug('setVolume', state.volumeLevel)
+      logger.debug('setVolume', 'volumeLevel', state.volumeLevel)
     }
 
     const volumeIcon = computed(() => {
@@ -93,7 +93,7 @@ export function usePlayer() {
 
     const setPlaybackRate = (level: number) => {
       state.playbackRate = Math.max(0.5, Math.min(2.0, level))
-      logger.debug('setPlaybackRate', state.playbackRate)
+      logger.debug('setPlaybackRate', 'playbackRate', state.playbackRate)
     }
 
     const timestampLabel = computed(() => {
@@ -128,7 +128,7 @@ export function usePlayer() {
 
       state.currentTime = newTime
       state.seekTime = newTime
-      logger.debug('skipTime', seconds, 'newTime', newTime)
+      logger.debug('skipTime', 'seconds', seconds, 'newTime', newTime)
     }
 
     const updateTime = (currentTime: number, duration :number) => {
@@ -172,7 +172,7 @@ export function usePlayer() {
 
       state.currentTime = newTime
       state.seekTime = newTime
-      logger.debug('seek', percent, 'newTime', newTime)
+      logger.debug('seek', 'percent', percent, 'newTime', newTime)
     }
 
     const handleProgressBarHover = (percent: number) => {
@@ -186,28 +186,28 @@ export function usePlayer() {
 
     const toVideoUrl = (filePath: string): string => {
       const url = `http://127.0.0.1:${videoPort}/api/video?path=` + encodeURIComponent(filePath)
-      logger.debug('toVideoUrl', url)
+      logger.debug('toVideoUrl', 'url', url)
       return url
     }
 
     const getStreamUrl = async (playlistItemId: string): Promise<StreamURLResult | null> => {
-      logger.debug('getStreamUrl', playlistItemId)
+      logger.debug('getStreamUrl', 'playlistItemId', playlistItemId)
       try {
         const result = await window.go.main.App.GetStreamURL(playlistItemId) as StreamURLResult | null
-        logger.debug('getStreamUrl result', result)
+        logger.debug('getStreamUrl result', 'result', result)
         return result
       } catch (e) {
-        logger.error('GetStreamURL error:', e)
+        logger.error('GetStreamURL error', 'error', e)
         return null
       }
     }
 
     const stopHlsStream = async (streamId: string) => {
-      logger.debug('stopHlsStream', streamId)
+      logger.debug('stopHlsStream', 'streamId', streamId)
       try {
         await window.go.main.App.StopHLSStream(streamId)
       } catch (e) {
-        logger.error('StopHLSStream error:', e)
+        logger.error('StopHLSStream error', 'error', e)
       }
     }
 
@@ -226,7 +226,7 @@ export function usePlayer() {
     }
 
     const playVideo = async (videoSrc: string, currentTime: number, playlistItemId?: string, isPlaying?: boolean) => {
-      logger.debug('playVideo', { videoSrc, currentTime, playlistItemId })
+      logger.debug('playVideo', 'videoSrc', videoSrc, 'currentTime', currentTime, 'playlistItemId', playlistItemId)
       state.playlistItemId = playlistItemId
       state.currentTime = currentTime
 
@@ -253,11 +253,11 @@ export function usePlayer() {
 
       state.videoSrc = url
       state.isPlaying = isPlaying ?? false
-      logger.debug('playVideo: video source set', url)
+      logger.debug('playVideo: video source set', 'url', url)
     }
 
     const applyPreferences = (preferences: AppPreferences) => {
-      logger.debug('applyPreferences', preferences)
+      logger.debug('applyPreferences', 'preferences', preferences)
       state.shuffle = preferences.shuffle
       state.repeat = preferences.repeatMode as RepeatMode
       state.volumeLevel = preferences.volumeLevel

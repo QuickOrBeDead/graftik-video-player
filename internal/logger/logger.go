@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -27,6 +28,7 @@ type Logger interface {
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
 	Error(msg string, args ...any)
+	WriteToText(level slog.Level, msg string, args ...any)
 }
 
 type FrontendSink func(level slog.Level, msg string, attrs ...slog.Attr)
@@ -45,6 +47,7 @@ type DefaultLogger struct {
 	mu           sync.Mutex
 	buffered     []LogEntry
 	flushed      bool
+	textHandlers []slog.Handler
 }
 
 type LogConfig struct {
@@ -113,6 +116,9 @@ func New(cfg LogConfig) *DefaultLogger {
 		l.file = w
 	}
 
+	l.textHandlers = make([]slog.Handler, len(handlers))
+	copy(l.textHandlers, handlers)
+
 	l.Logger = slog.New(&multiHandler{handlers: handlers, logger: l})
 	return l
 }
@@ -158,6 +164,28 @@ func (l *DefaultLogger) sendToFrontend(level slog.Level, msg string, attrs []slo
 	}
 }
 
+func (l *DefaultLogger) WriteToTextHandlers(level slog.Level, msg string, attrs ...slog.Attr) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	record := slog.NewRecord(time.Now(), level, msg, 0)
+	record.AddAttrs(attrs...)
+	for _, h := range l.textHandlers {
+		h.Handle(context.Background(), record)
+	}
+}
+
+func (l *DefaultLogger) WriteToText(level slog.Level, msg string, args ...any) {
+	attrs := make([]slog.Attr, 0, int(math.Ceil(float64(len(args))/2))+1)
+	attrs = append(attrs, slog.String("origin", "frontend"))
+	for i := 0; i < len(args)-1; i += 2 {
+		attrs = append(attrs, slog.Any(fmt.Sprintf("%v", args[i]), args[i+1]))
+	}
+	if len(args)%2 == 1 {
+		attrs = append(attrs, slog.Any("MISSING", args[len(args)-1]))
+	}
+	l.WriteToTextHandlers(level, msg, attrs...)
+}
+
 type multiHandler struct {
 	handlers []slog.Handler
 	logger   *DefaultLogger
@@ -173,15 +201,22 @@ func (h *multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *multiHandler) Handle(ctx context.Context, r slog.Record) error {
+	newRecord := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
+	newRecord.AddAttrs(slog.String("origin", "backend"))
+	r.Attrs(func(a slog.Attr) bool {
+		newRecord.AddAttrs(a)
+		return true
+	})
+
 	for _, handler := range h.handlers {
-		if err := handler.Handle(ctx, r); err != nil {
+		if err := handler.Handle(ctx, newRecord); err != nil {
 			return err
 		}
 	}
 
-	msg := r.Message
-	attrs := make([]slog.Attr, 0, r.NumAttrs())
-	r.Attrs(func(a slog.Attr) bool {
+	msg := newRecord.Message
+	attrs := make([]slog.Attr, 0, newRecord.NumAttrs())
+	newRecord.Attrs(func(a slog.Attr) bool {
 		attrs = append(attrs, a)
 		return true
 	})
@@ -193,7 +228,7 @@ func (h *multiHandler) Handle(ctx context.Context, r slog.Record) error {
 		attrs = append(attrs, slog.String("source", source))
 	}
 
-	h.logger.sendToFrontend(r.Level, msg, attrs)
+	h.logger.sendToFrontend(newRecord.Level, msg, attrs)
 
 	return nil
 }
