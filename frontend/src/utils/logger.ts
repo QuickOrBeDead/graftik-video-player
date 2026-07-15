@@ -28,6 +28,9 @@ class FrontendLogger {
   private _maxBuffer = 1000
   get maxBuffer(): number { return this._maxBuffer }
   set maxBuffer(value: number) { this._maxBuffer = Math.max(1, value) }
+  private _paused = false
+  get paused(): boolean { return this._paused }
+  set paused(value: boolean) { this._paused = value }
   private nextId = 0
   private listeners: Set<LogCallback> = new Set()
   private prefix = '[Graftik]'
@@ -77,6 +80,7 @@ class FrontendLogger {
   }
 
   fromBackend(entry: { level: string; message: string; time?: string; source?: string; attrs?: Record<string, unknown> }) {
+    if (this._paused) return
     const level = (entry.level?.toLowerCase() as LogLevel) || 'info'
     if (!this.shouldLog(level)) {
       return
@@ -109,6 +113,7 @@ class FrontendLogger {
   }
 
   private log(level: LogLevel, msg: string, args: unknown[], fromBackend: boolean) {
+    if (this._paused) return
     if (!this.shouldLog(level)) return
 
     const argsStr = args.map(a => (typeof a === 'object' ? this.safeStringify(a) : String(a))).join(' ')

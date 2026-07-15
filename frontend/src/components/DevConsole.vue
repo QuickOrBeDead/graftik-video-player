@@ -31,6 +31,7 @@ const sourceFilterSummary = computed(() => {
 })
 const visible = ref(true)
 const autoScroll = ref(true)
+const recording = ref(true)
 const containerRef = ref<HTMLDivElement>()
 
 const entriesRaw = shallowRef<Array<LogEntry>>([]);
@@ -149,6 +150,11 @@ function toggleAllSources() {
   selectedSources.backend = next
   selectedSources.frontend = next
 }
+
+function toggleRecording() {
+  recording.value = !recording.value
+  logger.paused = !recording.value
+}
 </script>
 
 <template>
@@ -158,6 +164,16 @@ function toggleAllSources() {
         <i class="bi bi-terminal-fill"></i>
         <span class="fw-semibold small">Dev Console</span>
         <span class="badge bg-secondary">{{ entries.length }} entries</span>
+        <button
+          class="btn btn-sm border-0 p-0 d-flex align-items-center"
+          :class="recording ? 'text-danger' : 'text-white-50'"
+          @click="toggleRecording"
+          :title="recording ? 'Stop recording' : 'Resume recording'"
+        >
+          <i :class="recording ? 'bi bi-record-fill' : 'bi bi-record-fill'" class="fs-5"></i>
+          <span v-if="!recording" class="p-1 badge bg-danger">PAUSED</span>
+          <span v-if="recording" class="p-1 badge bg-success">RECORDING</span>
+        </button>
         <div class="vr mx-1 opacity-25"></div>
         <label class="d-flex align-items-center gap-1 buffer-label" title="Max buffer entries">
           <i class="bi bi-database"></i>
@@ -218,9 +234,6 @@ function toggleAllSources() {
         </button>
         <button class="btn btn-sm border-0 text-white-50" @click="onClear" title="Clear">
           <i class="bi bi-trash"></i>
-        </button>
-        <button class="btn btn-sm border-0 text-white-50" @click="visible = false" title="Hide">
-          <i class="bi bi-dash-lg"></i>
         </button>
         <button class="btn btn-sm border-0 text-white-50" @click="emit('close')" title="Close">
           <i class="bi bi-x-lg"></i>
