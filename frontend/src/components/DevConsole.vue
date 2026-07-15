@@ -12,13 +12,22 @@ const selectedLevels = reactive<Record<LogLevel, boolean>>({
   warn: true,
   error: true,
 })
-const filterOpen = ref(false)
+const levelFilterOpen = ref(false)
+const sourceFilterOpen = ref(false)
 
 const allSelected = computed(() => allLevels.every(l => selectedLevels[l]))
-const filterSummary = computed(() => {
+const selectedSources = reactive({ backend: true, frontend: true })
+const allSourcesSelected = computed(() => selectedSources.backend && selectedSources.frontend)
+
+const levelFilterSummary = computed(() => {
   if (allSelected.value) return 'all'
   const count = allLevels.filter(l => selectedLevels[l]).length
   return count === 0 ? 'none' : `${count}/5`
+})
+const sourceFilterSummary = computed(() => {
+  if (allSourcesSelected.value) return 'all'
+  const count = (selectedSources.backend ? 1 : 0) + (selectedSources.frontend ? 1 : 0)
+  return count === 0 ? 'none' : count === 1 ? (selectedSources.backend ? 'BE' : 'FE') : 'all'
 })
 const visible = ref(true)
 const autoScroll = ref(true)
@@ -45,9 +54,10 @@ function formatAttrValue(v: unknown): string {
 }
 
 const entries = computed(() => {
-  const all = entriesRaw.value
-  if (allSelected.value) return all
-  return all.filter(e => selectedLevels[e.level])
+  let all = entriesRaw.value
+  if (!allSelected.value) all = all.filter(e => selectedLevels[e.level])
+  if (!allSourcesSelected.value) all = all.filter(e => e.fromBackend ? selectedSources.backend : selectedSources.frontend)
+  return all
 })
 
 function levelBadgeClass(level: LogLevel): string {
@@ -89,7 +99,8 @@ onUnmounted(() => {
 })
 
 function onDocClick() {
-  filterOpen.value = false
+  levelFilterOpen.value = false
+  sourceFilterOpen.value = false
 }
 
 function scrollDown() {
@@ -132,6 +143,12 @@ function toggleAll() {
 function toggleLevel(level: LogLevel) {
   selectedLevels[level] = !selectedLevels[level]
 }
+
+function toggleAllSources() {
+  const next = !allSourcesSelected.value
+  selectedSources.backend = next
+  selectedSources.frontend = next
+}
 </script>
 
 <template>
@@ -152,13 +169,14 @@ function toggleLevel(level: LogLevel) {
         <button
           class="btn btn-sm border-0 text-white-50"
           :class="{ 'text-white': !allSelected }"
-          @click="filterOpen = !filterOpen"
-          title="Filter levels"
+          @click="levelFilterOpen = !levelFilterOpen; sourceFilterOpen = false"
+          title="Filter by level"
         >
           <i class="bi bi-funnel"></i>
-          <span class="ms-1 small">{{ filterSummary }}</span>
+          <span class="ms-1 small">Level</span>
+          <span class="ms-1 filter-badge">{{ levelFilterSummary }}</span>
         </button>
-        <div v-if="filterOpen" class="filter-panel" @click.stop>
+        <div v-if="levelFilterOpen" class="filter-panel" @click.stop>
           <label class="filter-item">
             <input type="checkbox" :checked="allSelected" @change="toggleAll" />
             <span>All</span>
@@ -167,6 +185,32 @@ function toggleLevel(level: LogLevel) {
             <input type="checkbox" :checked="selectedLevels[level]" @change="toggleLevel(level)" />
             <i :class="levelIcon(level)" class="me-1"></i>
             {{ level }}
+          </label>
+        </div>
+        <button
+          class="btn btn-sm border-0 text-white-50"
+          :class="{ 'text-white': !allSourcesSelected }"
+          @click="sourceFilterOpen = !sourceFilterOpen; levelFilterOpen = false"
+          title="Filter by source"
+        >
+          <i class="bi bi-funnel"></i>
+          <span class="ms-1 small">Source</span>
+          <span class="ms-1 filter-badge">{{ sourceFilterSummary }}</span>
+        </button>
+        <div v-if="sourceFilterOpen" class="filter-panel" @click.stop>
+          <label class="filter-item">
+            <input type="checkbox" :checked="allSourcesSelected" @change="toggleAllSources" />
+            <span>All</span>
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" :checked="selectedSources.backend" @change="selectedSources.backend = !selectedSources.backend" />
+            <i class="bi bi-hdd-stack me-1"></i>
+            Backend
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" :checked="selectedSources.frontend" @change="selectedSources.frontend = !selectedSources.frontend" />
+            <i class="bi bi-window me-1"></i>
+            Frontend
           </label>
         </div>
         <button class="btn btn-sm border-0 text-white-50" @click="onCopyAll" title="Copy all">
@@ -384,6 +428,14 @@ function toggleLevel(level: LogLevel) {
 .filter-item:hover {
   background: #333;
   color: #fff;
+}
+
+.filter-badge {
+  font-size: 0.6rem;
+  background: #333;
+  padding: 0 4px;
+  border-radius: 3px;
+  color: #999;
 }
 
 .filter-item input[type="checkbox"] {
