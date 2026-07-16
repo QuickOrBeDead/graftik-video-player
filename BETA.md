@@ -89,7 +89,7 @@
   - **Build** — tag-triggered (v\*), produces Windows .exe + Linux .deb
   - **Release** — manual workflow to create and push tags
 - Cross-platform: Windows amd64, Linux amd64
-- Bundled ffmpeg/ffprobe binaries (Windows in `bundled/`)
+- FFmpeg/FFprobe downloaded via `build/<os>/download-ffmpeg` scripts
 
 ---
 

@@ -43,5 +43,15 @@ jobs:
         run: npm run build
         working-directory: frontend
 
+      - name: Cache FFmpeg
+        id: cache-ffmpeg
+        uses: actions/cache@v6
+        with:
+          path: build/linux/bin
+          key: ffmpeg-linux-${{ runner.arch }}-20260628
+
       - name: Go vet
         run: go vet ./...
+
+      - name: Go tests
+        run: bash run-tests.sh

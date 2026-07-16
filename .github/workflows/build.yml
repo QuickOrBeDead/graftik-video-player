@@ -110,6 +110,16 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && steps.cache-ffmpeg-linux.outputs.cache-hit != 'true'
         run: bash build/linux/download-ffmpeg.sh
 
+      - name: Go tests (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: bash run-tests.sh
+
+      - name: Go tests (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: .\run-tests.ps1
+
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 

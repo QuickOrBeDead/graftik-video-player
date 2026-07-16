@@ -1,35 +1,34 @@
 #!/bin/bash
+# Download ffmpeg/ffprobe 8.1.2 for Linux from GitHub Releases
 set -euo pipefail
 
 OUT_DIR="$(cd "$(dirname "$0")" && pwd)/bin"
-ARCH="${1:-$(uname -m)}"
-
-case "$ARCH" in
-  x86_64|amd64)  ARCH="amd64" ;;
-  aarch64|arm64) ARCH="arm64"  ;;
-  armv7l|armhf)  ARCH="armhf"  ;;
-  armel)         ARCH="armel"  ;;
-  i686|i386)     ARCH="i686"   ;;
-  *) echo "Unsupported arch: $ARCH"; exit 1 ;;
-esac
-
 mkdir -p "$OUT_DIR"
 
-FFMPEG_VERSION="release"
-ARCHIVE="ffmpeg-${FFMPEG_VERSION}-${ARCH}-static.tar.xz"
-BASE_URL="https://johnvansickle.com/ffmpeg/releases"
+MARKER="/tmp/ffmpeg-8.1.2-linux.verified"
+if [[ -f "$MARKER" ]] && [[ -f "${OUT_DIR}/ffmpeg" ]]; then
+  echo "ffmpeg already present and verified at ${OUT_DIR}"
+  exit 0
+fi
 
-echo "Downloading $ARCHIVE ..."
-curl -L -o "/tmp/$ARCHIVE" "$BASE_URL/$ARCHIVE"
+OWNER="QuickOrBeDead"
+REPO="graftik-video-player"
+TAG="ffmpeg-8.1.2"
+ARCHIVE="linux-amd64-${TAG}.tar.gz"
+EXPECTED_HASH="cc6aab4abb4a57aa27a765e5ad99caf9ce13d47bc156ae815f5122991657632b"
+BASE_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}"
+
+echo "Downloading ${ARCHIVE} ..."
+curl -L -o "/tmp/${ARCHIVE}" "${BASE_URL}/${ARCHIVE}"
+
+echo "Verifying integrity ..."
+echo "${EXPECTED_HASH}  /tmp/${ARCHIVE}" | sha256sum -c -
 
 echo "Extracting ffmpeg and ffprobe ..."
-tar -xf "/tmp/$ARCHIVE" -C "/tmp/"
-EXTRACT_DIR="$(find /tmp -mindepth 1 -maxdepth 1 -type d -name 'ffmpeg-*' | head -1)"
-cp "$EXTRACT_DIR/ffmpeg" "$OUT_DIR/"
-cp "$EXTRACT_DIR/ffprobe" "$OUT_DIR/"
-chmod +x "$OUT_DIR/ffmpeg" "$OUT_DIR/ffprobe"
+tar -xzf "/tmp/${ARCHIVE}" -C "${OUT_DIR}/"
+chmod +x "${OUT_DIR}/ffmpeg" "${OUT_DIR}/ffprobe"
 
-rm -f "/tmp/$ARCHIVE"
-rm -rf "$EXTRACT_DIR"
+rm -f "/tmp/${ARCHIVE}"
+touch "$MARKER"
 
-echo "ffmpeg/ffprobe downloaded to: $OUT_DIR"
+echo "ffmpeg/ffprobe downloaded to: ${OUT_DIR}"
