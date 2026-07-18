@@ -89,7 +89,7 @@
   - **Build** — tag-triggered (v\*), produces Windows .exe + Linux .deb
   - **Release** — manual workflow to create and push tags
 - Cross-platform: Windows amd64, Linux amd64
-- FFmpeg/FFprobe downloaded via `build/<os>/download-ffmpeg` scripts
+- FFmpeg/FFprobe downloaded via `src/build/<os>/download-ffmpeg` scripts
 
 ---
 
@@ -125,8 +125,8 @@ The app saves `elapsedTime` per item in preferences, but **does not restore play
 - **`FEATURES.md`** — Describes Electron-era architecture (better-sqlite3, Drizzle ORM, electron-store, electron-updater, vue-router subwindows). Update to match current Wails implementation.
 
 #### 4. Version Bump
-- Update `appVersion` in `version.go:19` from `"0.0.0"` to `"0.1.0-beta.1"`
-- Ensure `wails.json` version aligns
+- Update `appVersion` in `src/version.go:19` from `"0.0.0"` to `"0.1.0-beta.1"`
+- Ensure `src/wails.json` version aligns
 
 #### 5. Manual QA Pass
 Verify all features before tagging:
@@ -180,24 +180,25 @@ Verify all features before tagging:
 
 | Package | Test | What It Verifies |
 |---|---|---|
-| `internal/data/player_repository.go` | `TestCreatePlaylist`, `TestAddItem`, `TestDeleteItem`, `TestUpdateProgress` | SQLite CRUD correctness with in-memory DB (WAL mode edge cases) |
-| `internal/data/thumbnail_data_store.go` | `TestGetCachedPath`, `TestCacheHit`, `TestCacheMiss`, `TestInvalidation` | Thumbnail caching logic, hash-based invalidation on file change |
-| `internal/data/config.go` | `TestSaveLoad`, `TestRoundTrip`, `TestDefaults` | JSON config read/write, missing file fallback |
-| `internal/data/migrations.go` | `TestMigrateFresh`, `TestMigrateIdempotent` | Schema creation and re-application safety |
-| `internal/hls/engine.go` | `TestStartStream`, `TestStopStream`, `TestCleanup`, `TestRemuxVsTranscode` | HLS engine start/stop lifecycle, temp dir cleanup |
-| `internal/media/probe.go` | `TestProbeNative`, `TestProbeRemux`, `TestProbeTranscode`, `TestHWEncoderDetection` | FFprobe output parsing, codec/container classification, HW encoder availability |
-| `internal/plugin/manager.go` | `TestDiscoverPlugins`, `TestInstallFromZip`, `TestRemovePlugin` | Plugin discovery, ZIP extraction, manifest parsing, removal |
-| `internal/plugin/lua.go` | `TestExecAction`, `TestHostAPI`, `TestBadScript` | Lua VM execution, host API (exec, emit, addToPlaylist), error handling |
-| `app.go` | `TestGetStreamURLNative`, `TestGetStreamURLTranscode`, `TestStopHLSStream` | Stream URL routing, stream lifecycle binding |
-| `videoserver.go` | `TestServeVideoRange`, `TestServeHLS`, `Test404`, `TestMethodNotAllowed` | HTTP range requests, HLS directory serving, error codes |
+| `src/internal/data/player_repository.go` | `TestCreatePlaylist`, `TestAddItem`, `TestDeleteItem`, `TestUpdateProgress` | SQLite CRUD correctness with in-memory DB (WAL mode edge cases) |
+| `src/internal/data/thumbnail_data_store.go` | `TestGetCachedPath`, `TestCacheHit`, `TestCacheMiss`, `TestInvalidation` | Thumbnail caching logic, hash-based invalidation on file change |
+| `src/internal/data/config.go` | `TestSaveLoad`, `TestRoundTrip`, `TestDefaults` | JSON config read/write, missing file fallback |
+| `src/internal/data/migrations.go` | `TestMigrateFresh`, `TestMigrateIdempotent` | Schema creation and re-application safety |
+| `src/internal/hls/engine.go` | `TestStartStream`, `TestStopStream`, `TestCleanup`, `TestRemuxVsTranscode` | HLS engine start/stop lifecycle, temp dir cleanup |
+| `src/internal/media/probe.go` | `TestProbeNative`, `TestProbeRemux`, `TestProbeTranscode`, `TestHWEncoderDetection` | FFprobe output parsing, codec/container classification, HW encoder availability |
+| `src/internal/plugin/manager.go` | `TestDiscoverPlugins`, `TestInstallFromZip`, `TestRemovePlugin` | Plugin discovery, ZIP extraction, manifest parsing, removal |
+| `src/internal/plugin/lua.go` | `TestExecAction`, `TestHostAPI`, `TestBadScript` | Lua VM execution, host API (exec, emit, addToPlaylist), error handling |
+| `src/app.go` | `TestGetStreamURLNative`, `TestGetStreamURLTranscode`, `TestStopHLSStream` | Stream URL routing, stream lifecycle binding |
+| `src/internal/videoserver/server.go` | `TestServeVideoRange`, `TestServeHLS`, `Test404`, `TestMethodNotAllowed` | HTTP range requests, HLS directory serving, error codes |
 
 #### Test Fixtures
-- Small `.mp4` file (~100KB) for probe/stream tests (committed to `internal/testdata/`)
+- Small `.mp4` file (~100KB) for probe/stream tests (committed to `src/internal/testdata/`)
 - Sample `plugin.json` + `main.lua` for plugin tests
 - Mock FFprobe/FFmpeg binaries for CI environments without FFmpeg installed
 
 #### Running
 ```bash
+cd src
 go test ./...                    # all tests
 go test ./internal/data/...      # specific package
 go test -v -run TestProbe        # specific test
@@ -270,7 +271,7 @@ Add a test step to `.github/workflows/ci.yml`:
 
 - name: Frontend tests
   run: npx vitest run --coverage
-  working-directory: ./frontend
+  working-directory: ./src/frontend
 ```
 
 For Go tests in CI, mock FFmpeg/FFprobe to avoid requiring them as system dependencies. Create a small `testdata/` directory with minimal media files.

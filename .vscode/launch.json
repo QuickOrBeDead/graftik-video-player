@@ -6,9 +6,9 @@
       "type": "go",
       "request": "launch",
       "mode": "exec",
-      "program": "${workspaceFolder}/build/bin/graftik-video-player",
+      "program": "${workspaceFolder}/src/build/bin/graftik-video-player",
       "preLaunchTask": "wails-build-debug",
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/src",
       "env": {},
       "args": [],
       "showLog": true

@@ -61,7 +61,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: src/frontend/package-lock.json
 
       - name: Install system dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -79,52 +79,53 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
-        working-directory: frontend
+        working-directory: src/frontend
 
       - name: Frontend tests
         run: npm run test
-        working-directory: frontend
+        working-directory: src/frontend
 
       - name: Cache FFmpeg (Windows)
         if: matrix.os == 'windows-latest'
         id: cache-ffmpeg-windows
         uses: actions/cache@v6
         with:
-          path: build/windows/bin
+          path: src/build/windows/bin
           key: ffmpeg-windows-${{ runner.arch }}-20260628
 
       - name: Download FFmpeg (Windows)
         if: matrix.os == 'windows-latest' && steps.cache-ffmpeg-windows.outputs.cache-hit != 'true'
         shell: pwsh
-        run: .\build\windows\download-ffmpeg.ps1
+        run: .\src\build\windows\download-ffmpeg.ps1
 
       - name: Cache FFmpeg (Linux)
         if: matrix.os == 'ubuntu-latest'
         id: cache-ffmpeg-linux
         uses: actions/cache@v6
         with:
-          path: build/linux/bin
+          path: src/build/linux/bin
           key: ffmpeg-linux-${{ runner.arch }}-20260628
 
       - name: Download FFmpeg (Linux)
         if: matrix.os == 'ubuntu-latest' && steps.cache-ffmpeg-linux.outputs.cache-hit != 'true'
-        run: bash build/linux/download-ffmpeg.sh
+        run: bash src/build/linux/download-ffmpeg.sh
 
       - name: Go tests (Linux)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
-        run: bash run-tests.sh
+        run: bash scripts/run-tests.sh
 
       - name: Go tests (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
-        run: .\run-tests.ps1
+        run: .\scripts\run-tests.ps1
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
       - name: Override app.json for production
         shell: bash
+        working-directory: src
         run: |
           cat > app.json << 'EOF'
           {
@@ -140,6 +141,7 @@ jobs:
           EOF
 
       - name: Build
+        working-directory: src
         run: wails build -platform ${{ matrix.platform }} -clean -tags webkit2_41 -ldflags "-X main.appVersion=${{ steps.version.outputs.value }}" ${{ matrix.nsis }}
         env:
           CGO_ENABLED: 1
@@ -148,17 +150,17 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Path "build/bin/bin" -Force
-          Copy-Item "build/windows/bin/ffmpeg.exe" "build/bin/bin/"
-          Copy-Item "build/windows/bin/ffprobe.exe" "build/bin/bin/"
+          New-Item -ItemType Directory -Path "src/build/bin/bin" -Force
+          Copy-Item "src/build/windows/bin/ffmpeg.exe" "src/build/bin/bin/"
+          Copy-Item "src/build/windows/bin/ffprobe.exe" "src/build/bin/bin/"
 
       - name: Bundle FFmpeg with executable (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          mkdir -p "build/bin/bin"
-          cp build/linux/bin/ffmpeg build/bin/bin/
-          cp build/linux/bin/ffprobe build/bin/bin/
-          chmod +x build/bin/bin/*
+          mkdir -p "src/build/bin/bin"
+          cp src/build/linux/bin/ffmpeg src/build/bin/bin/
+          cp src/build/linux/bin/ffprobe src/build/bin/bin/
+          chmod +x src/build/bin/bin/*
 
       - name: Install nfpm
         if: matrix.os == 'ubuntu-latest'
@@ -168,8 +170,8 @@ jobs:
 
       - name: Build .deb package
         if: matrix.os == 'ubuntu-latest'
-        run: nfpm pkg --packager deb --target ${{ github.workspace }}/build/bin/
-        working-directory: build/linux
+        run: nfpm pkg --packager deb --target ${{ github.workspace }}/src/build/bin/
+        working-directory: src/build/linux
         env:
           VERSION: ${{ steps.version.outputs.value }}
 
@@ -177,7 +179,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: graftik-video-player-${{ matrix.os }}
-          path: build/bin/**
+          path: src/build/bin/**
           if-no-files-found: warn
 
   release:
@@ -195,7 +197,7 @@ jobs:
         with:
           pattern: graftik-video-player-*
           merge-multiple: true
-          path: build/bin
+          path: src/build/bin
 
       - name: Determine tag
         id: tag
@@ -229,8 +231,8 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ steps.prerelease.outputs.value }}
           files: |
-            build/bin/*.deb
-            build/bin/*-installer.exe
+            src/build/bin/*.deb
+            src/build/bin/*-installer.exe
 
       - name: Delete workflow artifacts
         run: |

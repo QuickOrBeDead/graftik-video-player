@@ -22,36 +22,37 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: src/frontend/package-lock.json
 
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
 
       - name: Install frontend dependencies
         run: npm ci
-        working-directory: frontend
+        working-directory: src/frontend
 
       - name: TypeScript check
         run: npm run typecheck
-        working-directory: frontend
+        working-directory: src/frontend
 
       - name: Frontend tests
         run: npm run test
-        working-directory: frontend
+        working-directory: src/frontend
 
       - name: Build frontend
         run: npm run build
-        working-directory: frontend
+        working-directory: src/frontend
 
       - name: Cache FFmpeg
         id: cache-ffmpeg
         uses: actions/cache@v6
         with:
-          path: build/linux/bin
+          path: src/build/linux/bin
           key: ffmpeg-linux-${{ runner.arch }}-20260628
 
       - name: Go vet
         run: go vet ./...
+        working-directory: src
 
       - name: Go tests
-        run: bash run-tests.sh
+        run: bash scripts/run-tests.sh

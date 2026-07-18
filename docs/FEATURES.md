@@ -116,7 +116,7 @@ Wails v2 application with Go backend and Vue 3 + TypeScript frontend. The Go bin
 - Vue 3 + TypeScript + Vite frontend (served via `embed.FS`)
 - Wails v2 bindings for Go ↔ frontend communication (no IPC boilerplate)
 - Cross-platform: Windows amd64, Linux amd64
-- FFmpeg/FFprobe downloaded via `build/<os>/download-ffmpeg` scripts for media processing
+- FFmpeg/FFprobe downloaded via `src/build/<os>/download-ffmpeg` scripts for media processing
 - CI/CD: GitHub Actions — typecheck + `go vet` on push, tag-triggered builds with `.deb` and `.exe` output
 
 ## Planned

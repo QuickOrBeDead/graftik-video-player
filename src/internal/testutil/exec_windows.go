@@ -1,13 +1,13 @@
 //go:build windows
 
-package hls
+package testutil
 
 import "os/exec"
 
-func execCommand(name string, arg ...string) *exec.Cmd {
+func ExecCommand(name string, arg ...string) *exec.Cmd {
 	return exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", name)
 }
 
-func scriptExt() string {
+func ScriptExt() string {
 	return ".ps1"
 }

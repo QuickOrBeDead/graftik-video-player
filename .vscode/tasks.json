@@ -14,7 +14,7 @@
         "webkit2_41"
       ],
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}/src"
       },
       "group": {
         "kind": "build",

@@ -20,6 +20,7 @@ import (
 	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 	"github.com/QuickOrBeDead/graftik-video-player/internal/media"
 	"github.com/QuickOrBeDead/graftik-video-player/internal/plugin"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/videoserver"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
@@ -39,7 +40,7 @@ type App struct {
 	store           *data.PlayerDataStore
 	thumbnailStore  *data.ThumbnailDataStore
 	ffmpegDir       string
-	videoServer     *VideoServer
+	videoServer     *videoserver.Server
 	hlsEngine       *hls.Engine
 	currentStreamID string
 	pluginManager   *plugin.Manager
@@ -173,7 +174,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	// Start dedicated video file server with mux
-	a.videoServer, err = NewVideoServer(a.log)
+	a.videoServer, err = videoserver.NewServer(a.log)
 	if err != nil {
 		a.log.Error("App startup: failed to start video server", "error", err)
 	}

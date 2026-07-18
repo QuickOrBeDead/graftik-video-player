@@ -1,6 +1,6 @@
 # Test Matrix — Container/Codec Combinations
 
-Based on the classification logic in `internal/media/probe.go:136-190`.
+Based on the classification logic in `src/internal/media/probe.go:136-190`.
 
 ## Native (Direct Playback)
 
@@ -78,7 +78,7 @@ Behaviour when no HW encoder is available: falls back to `libx264` software enco
 
 ## Native File Dialog Extensions
 
-From `app.go:534` (18 extensions):
+From `src/app.go:534` (18 extensions):
 
 ```
 *.mp4 *.mov *.ogg *.webm *.3gp
@@ -88,7 +88,7 @@ From `app.go:534` (18 extensions):
 
 ## Natively-Playable Extensions
 
-From `probe.go:212-219` / `Player.vue:43` (8 extensions):
+From `src/probe.go:212-219` / `Player.vue:43` (8 extensions):
 
 ```
 .mp4 .mov .m4v

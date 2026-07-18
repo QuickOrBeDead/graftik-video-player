@@ -1,4 +1,4 @@
-package main
+package videoserver
 
 import (
 	"net"
@@ -9,17 +9,17 @@ import (
 	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
 )
 
-type VideoServer struct {
+type Server struct {
 	mux  *http.ServeMux
 	port int
 	log  graftikLogger.Logger
 }
 
-func NewVideoServer(log graftikLogger.Logger) (*VideoServer, error) {
+func NewServer(log graftikLogger.Logger) (*Server, error) {
 	if log == nil {
 		panic("logger must not be nil")
 	}
-	vs := &VideoServer{log: log}
+	vs := &Server{log: log}
 
 	vs.mux = http.NewServeMux()
 
@@ -63,11 +63,11 @@ func NewVideoServer(log graftikLogger.Logger) (*VideoServer, error) {
 	return vs, nil
 }
 
-func (vs *VideoServer) Port() int {
+func (vs *Server) Port() int {
 	return vs.port
 }
 
-func (vs *VideoServer) RegisterHLS(hlsDir string) {
+func (vs *Server) RegisterHLS(hlsDir string) {
 	vs.log.Debug("VideoServer: hls http handler is registered to /hls/", "hlsDir", hlsDir)
 	vs.mux.Handle("/hls/", http.StripPrefix("/hls/", http.FileServer(http.Dir(hlsDir))))
 }

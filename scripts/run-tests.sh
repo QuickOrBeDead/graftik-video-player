@@ -1,6 +1,6 @@
 #!/bin/bash
 # Prepare ffmpeg and run Go tests
-# Usage: ./run-tests.sh [--short]
+# Usage: ./scripts/run-tests.sh [--short]
 set -euo pipefail
 
 SHORT=false
@@ -11,7 +11,8 @@ case "${1:-}" in
   *) echo "Usage: $0 [--short]" >&2; exit 1 ;;
 esac
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
+cd src
 
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "$OS" in
@@ -20,9 +21,11 @@ case "$OS" in
   *) echo "Unsupported OS: $OS" >&2; exit 1 ;;
 esac
 
+EXCLUDE="github.com/QuickOrBeDead/graftik-video-player/frontend"
+
 if $SHORT; then
   echo "=== Running Go tests (short mode) ==="
-  exec go test -short ./...
+  exec go test -short $(go list ./... | grep -v "$EXCLUDE")
 fi
 
 echo "=== Downloading ffmpeg ==="
@@ -30,4 +33,4 @@ echo "=== Downloading ffmpeg ==="
 
 echo ""
 echo "=== Running Go tests ==="
-exec go test ./...
+exec go test $(go list ./... | grep -v "$EXCLUDE")

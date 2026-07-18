@@ -1,29 +1,18 @@
 package data
 
 import (
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
-	graftikLogger "github.com/QuickOrBeDead/graftik-video-player/internal/logger"
+	"github.com/QuickOrBeDead/graftik-video-player/internal/testutil"
 )
-
-type nopLogger struct{}
-
-func (nopLogger) Debug(msg string, args ...any)                         {}
-func (nopLogger) Info(msg string, args ...any)                          {}
-func (nopLogger) Warn(msg string, args ...any)                          {}
-func (nopLogger) Error(msg string, args ...any)                         {}
-func (nopLogger) WriteToText(level slog.Level, msg string, args ...any) {}
-
-var _ graftikLogger.Logger = nopLogger{}
 
 func setupTestStore(t *testing.T) *PlayerDataStore {
 	t.Helper()
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
-	log := nopLogger{}
+	log := testutil.NopLogger{}
 	store, err := NewPlayerDataStore(dir, dbPath, log)
 	if err != nil {
 		t.Fatalf("setupTestStore: NewPlayerDataStore failed: %v", err)
@@ -73,7 +62,7 @@ func TestNewPlayerDataStore_NilLogger(t *testing.T) {
 
 func TestNewPlayerDataStore_Success(t *testing.T) {
 	dir := t.TempDir()
-	store, err := NewPlayerDataStore(dir, filepath.Join(dir, "db.db"), nopLogger{})
+	store, err := NewPlayerDataStore(dir, filepath.Join(dir, "db.db"), testutil.NopLogger{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -92,7 +81,7 @@ func TestInitialize(t *testing.T) {
 func TestClose(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
-	store, err := NewPlayerDataStore(dir, dbPath, nopLogger{})
+	store, err := NewPlayerDataStore(dir, dbPath, testutil.NopLogger{})
 	if err != nil {
 		t.Fatalf("NewPlayerDataStore: %v", err)
 	}
@@ -605,7 +594,7 @@ func TestUpdateSettings(t *testing.T) {
 func TestUpdateSettings_Persistence(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
-	log := nopLogger{}
+	log := testutil.NopLogger{}
 
 	store1, err := NewPlayerDataStore(dir, dbPath, log)
 	if err != nil {
@@ -631,7 +620,7 @@ func TestUpdateSettings_Persistence(t *testing.T) {
 func TestConfigFileCreated(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
-	store, err := NewPlayerDataStore(dir, dbPath, nopLogger{})
+	store, err := NewPlayerDataStore(dir, dbPath, testutil.NopLogger{})
 	if err != nil {
 		t.Fatalf("NewPlayerDataStore: %v", err)
 	}

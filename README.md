@@ -22,6 +22,7 @@ A cross-platform desktop video player built with [Wails v2](https://wails.io/) (
 ## Development
 
 ```bash
+cd src
 wails dev
 ```
 
@@ -30,6 +31,8 @@ This runs the Vite dev server with hot-reload for the Vue frontend and rebuilds 
 ## Build
 
 ```bash
+cd src
+
 # Linux
 wails build -platform linux/amd64 -clean
 
@@ -43,20 +46,27 @@ The version is injected at build time from the git tag via `-ldflags "-X main.ap
 
 ```
 .
-├── main.go              # Wails app entry point
-├── app.go               # App struct, menu, startup/shutdown, update logic
-├── version.go           # Version variable, update checker/downloader
-├── videoserver.go       # Local HTTP server for HLS segments
-├── wails.json           # Wails project config
-├── internal/
-│   ├── data/            # SQLite store (modernc.org/sqlite), thumbnail cache, config
-│   ├── hls/             # FFmpeg HLS engine
-│   ├── media/           # FFprobe probe + codec classification
-│   ├── plugin/          # Lua plugin manager
-│   ├── logger/          # Structured logger
-│   └── player_service.go  # Wails-bound service methods
-├── frontend/
-│   ├── src/             # Vue 3 + TypeScript app
-│   └── package.json
-└── build/               # Build scripts, FFmpeg bundling, nfpm config
+├── src/                 # Go application, frontend, and build assets
+│   ├── main.go          # Wails app entry point
+│   ├── app.go           # App struct, menu, startup/shutdown, update logic
+│   ├── version.go       # Version variable, update checker/downloader
+│   ├── wails.json       # Wails project config
+│   ├── app.json         # App runtime config (log level, rotation)
+│   ├── go.mod           # Go module definition
+│   ├── internal/
+│   │   ├── data/        # SQLite store (modernc.org/sqlite), thumbnail cache, config
+│   │   ├── hls/         # FFmpeg HLS engine
+│   │   ├── media/       # FFprobe probe + codec classification
+│   │   ├── plugin/      # Lua plugin manager
+│   │   ├── logger/      # Structured logger
+│   │   ├── videoserver/ # Local HTTP server for HLS segments
+│   │   └── player_service.go  # Wails-bound service methods
+│   ├── frontend/
+│   │   ├── src/         # Vue 3 + TypeScript app
+│   │   └── package.json
+│   └── build/           # Build scripts, FFmpeg bundling, nfpm config
+├── scripts/             # Dev scripts (test runners, coverage)
+├── docs/                # Project documentation
+├── README.md
+└── LICENSE
 ```
